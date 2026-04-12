@@ -4,6 +4,8 @@ import MyClothesShop.demo.entity.User;
 import MyClothesShop.demo.entity.enums.UserStatus;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class UserDTO {
     private Integer userId;
@@ -26,4 +28,5 @@ public class UserDTO {
         }
         return dto;
     }
+    private BigDecimal totalSpent;
 }

@@ -16,9 +16,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+// BỔ SUNG 2 THƯ VIỆN NÀY ĐỂ XỬ LÝ CHỮ TIẾNG VIỆT
+import java.text.Normalizer;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,17 @@ public class ClothesService {
     private final CategoryRepository categoryRepository;
     private final ClothesVariantRepository clothesVariantRepository;
     private final ClothesImageRepository clothesImageRepository;
+    private final OrderRepository orderRepository;
+
+    private String removeAccent(String s) {
+        if (s == null || s.trim().isEmpty()) {
+            return "";
+        }
+        String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        temp = pattern.matcher(temp).replaceAll("");
+        return temp.replace("đ", "d").replace("Đ", "D").toLowerCase();
+    }
 
     public List<ClothesResponse> getAllActiveClothes() {
         List<Clothes> clothesList = clothesRepository.findByIsDeletedFalse();
@@ -47,6 +63,12 @@ public class ClothesService {
         response.setName(clothes.getName());
         response.setDescription(clothes.getDescription());
 
+        response.setCreatedAt(clothes.getCreatedAt());
+
+        if (clothes.getCreatedAt() != null) {
+            boolean isNew = clothes.getCreatedAt().isAfter(LocalDateTime.now().minusDays(7));
+            response.setIsNewProduct(isNew);
+        }
         if (clothes.getCategory() != null) {
             response.setCategoryName(clothes.getCategory().getName());
             response.setCategoryId(clothes.getCategory().getCategoryId());
@@ -235,10 +257,24 @@ public class ClothesService {
         return "Đã xóa sản phẩm!";
     }
 
+    // ==========================================
+    // HÀM SEARCH ĐÃ ĐƯỢC NÂNG CẤP TÌM KHÔNG DẤU
+    // ==========================================
     public List<ClothesResponse> searchAndFilterClothes(String keyword, Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice, List<Color> colors, List<Size> sizes) {
+
+        // Cạo dấu từ khóa khách hàng nhập vào ("Ngô Thanh" -> "ngo thanh")
+        String finalKeyword = (keyword != null && !keyword.trim().isEmpty()) ? removeAccent(keyword.trim()) : null;
+
         return clothesRepository.findByIsDeletedFalse().stream()
                 .filter(c -> {
-                    if (keyword != null && !c.getName().toLowerCase().contains(keyword.toLowerCase())) return false;
+                    // Lọc theo tên: Cạo dấu cả tên sản phẩm trong DB rồi mới so sánh
+                    if (finalKeyword != null) {
+                        String productNameNoAccent = removeAccent(c.getName());
+                        if (!productNameNoAccent.contains(finalKeyword)) {
+                            return false;
+                        }
+                    }
+
                     if (categoryId != null && (c.getCategory() == null || !c.getCategory().getCategoryId().equals(categoryId))) return false;
                     return c.getVariants().stream().anyMatch(v -> {
                         if (v.getIsDeleted()) return false;
@@ -251,5 +287,9 @@ public class ClothesService {
                 })
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<TopProductDTO> getHotClothes() {
+        return orderRepository.findAllHotProducts();
     }
 }

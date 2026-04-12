@@ -1,6 +1,7 @@
 package MyClothesShop.demo.entity;
 
 import MyClothesShop.demo.entity.enums.UserStatus;
+import MyClothesShop.demo.util.StringHelper; // Import bảo bối cạo dấu
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.stream.Collectors;
+
 @Entity
 @Table(name = "User")
 @Data
@@ -30,6 +32,10 @@ public class User implements UserDetails{
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    // THÊM CỘT NÀY ĐỂ HỨNG TÊN KHÔNG DẤU
+    @Column(name = "search_name")
+    private String searchName;
+
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
@@ -42,7 +48,6 @@ public class User implements UserDetails{
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
-    // Dòng đã sửa lại cho đúng:
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private UserStatus status = UserStatus.ACTIVE;
@@ -53,21 +58,38 @@ public class User implements UserDetails{
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // ==========================================
+    // GỘP CHUẨN: LƯU NGÀY GIỜ + CẠO DẤU
+    // ==========================================
     @PrePersist
-    protected void onCreate() { this.createdAt = LocalDateTime.now(); this.updatedAt = LocalDateTime.now(); }
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+
+        // Tự động tạo tên không dấu lúc mới đăng ký User
+        if (this.fullName != null) {
+            this.searchName = StringHelper.removeAccent(this.fullName);
+        }
+    }
 
     @PreUpdate
-    protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+
+        // Tự động cập nhật tên không dấu nếu Admin/User đổi tên
+        if (this.fullName != null) {
+            this.searchName = StringHelper.removeAccent(this.fullName);
+        }
+    }
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "Role_User",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Lấy danh sách Quyền (Role) từ Database và gắn thêm chữ "ROLE_" phía trước
-        // (Đây là luật bắt buộc của Spring Security)
         return this.roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRoleName()))
                 .collect(Collectors.toList());
@@ -75,12 +97,12 @@ public class User implements UserDetails{
 
     @Override
     public String getUsername() {
-        return this.email; // Spring Security sẽ dùng email để làm tên đăng nhập
+        return this.email;
     }
 
     @Override
     public String getPassword() {
-        return this.passwordHash; // Spring Security sẽ dùng biến này để so sánh mật khẩu
+        return this.passwordHash;
     }
 
     @Override

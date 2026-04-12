@@ -46,23 +46,36 @@ public class DashboardService {
         return chartData;
     }
 
-    // ĐÃ FIX: Ép nhận tham số Year và Month
     public List<ChartDTO> getDailyRevenueChart(Integer year, Integer month) {
         int targetYear = (year != null) ? year : LocalDate.now().getYear();
         int targetMonth = (month != null) ? month : LocalDate.now().getMonthValue();
-
         return mapToChartDTO(orderRepository.getRevenueByDay(targetYear, targetMonth));
     }
 
-    // ĐÃ FIX: Ép nhận tham số Year
     public List<ChartDTO> getMonthlyRevenueChart(Integer year) {
         int targetYear = (year != null) ? year : LocalDate.now().getYear();
-
         return mapToChartDTO(orderRepository.getRevenueByMonth(targetYear));
     }
 
-    // Biểu đồ năm thì lấy chung các năm, không cần tham số
     public List<ChartDTO> getYearlyRevenueChart() {
         return mapToChartDTO(orderRepository.getRevenueByYear());
+    }
+
+    public List<ChartDTO> getNewProductChartData(String type, Integer year, Integer month) {
+        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+        int targetMonth = (month != null) ? month : LocalDate.now().getMonthValue();
+
+        if ("yearly".equalsIgnoreCase(type)) {
+            // Xem theo năm -> Lấy doanh thu của TẤT CẢ CÁC NĂM (Không truyền tham số)
+            return mapToChartDTO(orderRepository.getNewProductRevenueByYear());
+        }
+        else if ("monthly".equalsIgnoreCase(type)) {
+            // Xem theo tháng -> Lấy 12 tháng của NĂM CỤ THỂ (Chỉ truyền Năm)
+            return mapToChartDTO(orderRepository.getNewProductRevenueByMonth(targetYear));
+        }
+        else {
+            // Xem theo ngày -> Lấy các ngày của THÁNG CỤ THỂ (Truyền Năm và Tháng)
+            return mapToChartDTO(orderRepository.getNewProductRevenueByDay(targetYear, targetMonth));
+        }
     }
 }

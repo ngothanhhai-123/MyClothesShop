@@ -23,4 +23,7 @@ public interface ClothesRepository extends JpaRepository<Clothes, Integer> {
     List<Clothes> findByCategoryIdOrParentId(@Param("id") Integer id);
     // 3. Đếm tổng số lượng quần áo đang bán (isDeleted = false)
     long countByIsDeletedFalse();
+    // Tìm kiếm tương đối (LIKE) trên cột searchName
+    @Query("SELECT c FROM Clothes c WHERE c.isDeleted = false AND c.searchName LIKE %:keyword%")
+    List<Clothes> searchClothesByName(@Param("keyword") String keyword);
 }

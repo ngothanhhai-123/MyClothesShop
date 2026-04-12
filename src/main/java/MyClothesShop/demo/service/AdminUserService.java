@@ -3,13 +3,16 @@ package MyClothesShop.demo.service;
 import MyClothesShop.demo.dto.UserDTO;
 import MyClothesShop.demo.entity.User;
 import MyClothesShop.demo.entity.enums.UserStatus;
+import MyClothesShop.demo.repository.OrderRepository;
 import MyClothesShop.demo.repository.UserRepository;
+import MyClothesShop.demo.util.StringHelper; // Nhớ import cái này sếp nhé
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,18 +22,43 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    private final OrderRepository orderRepository;
 
-    // 1. Lấy danh sách toàn bộ khách hàng
+    // 1. Lấy danh sách toàn bộ khách hàng (ĐÃ BỔ SUNG TÍNH TIỀN)
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(UserDTO::fromEntity)
+                .map(user -> {
+                    // Bước 1: Vẫn lấy các thông tin cơ bản từ hàm cũ
+                    UserDTO dto = UserDTO.fromEntity(user);
+
+                    // Bước 2: Gọi DB tính tổng tiền các đơn COMPLETED của ông khách này
+                    BigDecimal total = orderRepository.sumTotalAmountByUser(user.getUserId());
+
+                    // Bước 3: Nhét tiền vào DTO (nếu null thì gán bằng 0đ)
+                    dto.setTotalSpent(total != null ? total : BigDecimal.ZERO);
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
-    // 2. Tìm kiếm khách hàng (Gọi hàm @Query rõ ràng đã tạo ở File 1)
+    // ========================================================
+    // 2. Tìm kiếm khách hàng (ĐÃ TÍCH HỢP CẠO DẤU + TÍNH TIỀN)
+    // ========================================================
     public List<UserDTO> searchUsers(String keyword) {
-        return userRepository.searchByKeyword(keyword).stream()
-                .map(UserDTO::fromEntity)
+        // Cạo dấu từ khóa của Admin trước khi đưa xuống DB
+        String finalKeyword = (keyword != null && !keyword.trim().isEmpty())
+                ? StringHelper.removeAccent(keyword.trim())
+                : "";
+
+        // Nhớ đảm bảo hàm searchByKeyword trong UserRepository đang LIKE với cột searchName sếp nhé!
+        return userRepository.searchByKeyword(finalKeyword).stream()
+                .map(user -> {
+                    UserDTO dto = UserDTO.fromEntity(user);
+                    BigDecimal total = orderRepository.sumTotalAmountByUser(user.getUserId());
+                    dto.setTotalSpent(total != null ? total : BigDecimal.ZERO);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -49,7 +77,7 @@ public class AdminUserService {
         if (user.getStatus() == UserStatus.ACTIVE) {
             user.setStatus(UserStatus.LOCKED);
             userRepository.save(user);
-            
+
             // Gửi email thông báo khóa tài khoản
             try {
                 SimpleMailMessage message = new SimpleMailMessage();

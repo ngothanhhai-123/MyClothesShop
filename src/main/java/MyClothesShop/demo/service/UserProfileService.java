@@ -20,32 +20,37 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AddressRepository addressRepository; // Gọi thợ xây Address vào đây
+    private final AddressRepository addressRepository;
 
     // 1. API: Xem thông tin cá nhân
     public UserProfileResponse getMyProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
-        // Kéo danh sách địa chỉ của User này ra
         List<Address> addresses = addressRepository.findByUser_UserId(user.getUserId());
-        String userAddress = "";
+        String fullAddress = "";
 
         if (!addresses.isEmpty()) {
-            // Lọc lấy cái địa chỉ mặc định, nếu không có thì lấy cái đầu tiên trong danh sách
-            Address defaultAddress = addresses.stream()
+            Address addr = addresses.stream()
                     .filter(a -> Boolean.TRUE.equals(a.getIsDefault()))
                     .findFirst()
                     .orElse(addresses.get(0));
-            userAddress = defaultAddress.getShippingAddress(); // Lấy cột street gửi ra cho Web
+
+            // Nối chuỗi thông minh: Số nhà, Phường, Quận, Tỉnh
+            StringBuilder sb = new StringBuilder();
+            if (addr.getAddressDetail() != null) sb.append(addr.getAddressDetail());
+            if (addr.getWard() != null) sb.append(sb.length() > 0 ? ", " : "").append(addr.getWard());
+            if (addr.getDistrict() != null) sb.append(sb.length() > 0 ? ", " : "").append(addr.getDistrict());
+            if (addr.getProvince() != null) sb.append(sb.length() > 0 ? ", " : "").append(addr.getProvince());
+
+            fullAddress = sb.toString();
         }
 
-        // Đóng gói dữ liệu gửi về cho Frontend
         UserProfileResponse response = new UserProfileResponse();
         response.setFullName(user.getFullName());
         response.setEmail(user.getEmail());
         response.setPhoneNumber(user.getPhoneNumber());
-        response.setAddress(userAddress); // Nhét địa chỉ vào đây
+        response.setAddress(fullAddress);
 
         return response;
     }
@@ -56,43 +61,35 @@ public class UserProfileService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
-        // --- BƯỚC 1: LƯU VÀO BẢNG USER ---
         if (request.getFullName() != null) user.setFullName(request.getFullName());
         if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
         userRepository.save(user);
 
-        // --- BƯỚC 2: LƯU VÀO BẢNG ADDRESS ---
-        if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+        // Chỉ xử lý địa chỉ nếu có ít nhất 1 trường địa chỉ được gửi lên
+        if (request.getProvince() != null || request.getAddressDetail() != null) {
             List<Address> addresses = addressRepository.findByUser_UserId(user.getUserId());
-            Address addressToUpdate;
+            Address addr = addresses.isEmpty() ? new Address() :
+                    addresses.stream().filter(a -> Boolean.TRUE.equals(a.getIsDefault()))
+                            .findFirst().orElse(addresses.get(0));
 
-            if (!addresses.isEmpty()) {
-                // Nếu đã có địa chỉ cũ, tìm cái mặc định để ghi đè lên
-                addressToUpdate = addresses.stream()
-                        .filter(a -> Boolean.TRUE.equals(a.getIsDefault()))
-                        .findFirst()
-                        .orElse(addresses.get(0));
-            } else {
-                // Nếu khách này mới tinh chưa có địa chỉ nào, tạo mới
-                addressToUpdate = new Address();
-                addressToUpdate.setUser(user);
-                // Bảng của Hải yêu cầu city ko được null, nên set cứng 1 chữ tránh lỗi Database
-                addressToUpdate.setShippingAddress("Chưa cập nhật");
-            }
+            if (addresses.isEmpty()) addr.setUser(user);
 
-            // Lưu toàn bộ nội dung khách gõ trên Web vào cột street
-            addressToUpdate.setShippingAddress(request.getAddress());
-            addressToUpdate.setRecipientName(user.getFullName());
-            addressToUpdate.setPhoneNumber(user.getPhoneNumber());
-            addressToUpdate.setIsDefault(true); // Đặt làm mặc định luôn
+            // Ghi đè các trường mới
+            addr.setProvince(request.getProvince());
+            addr.setDistrict(request.getDistrict());
+            addr.setWard(request.getWard());
+            addr.setAddressDetail(request.getAddressDetail());
 
-            addressRepository.save(addressToUpdate);
+            addr.setRecipientName(user.getFullName());
+            addr.setPhoneNumber(user.getPhoneNumber());
+            addr.setIsDefault(true);
+
+            addressRepository.save(addr);
         }
-
-        return "Cập nhật hồ sơ và địa chỉ thành công!";
+        return "Cập nhật thành công!";
     }
 
-    // 3. API: Đổi mật khẩu (Giữ nguyên code xịn của Hải)
+    // 3. API: Đổi mật khẩu
     @Transactional
     public String changePassword(String email, ChangePasswordRequest request) {
         User user = userRepository.findByEmail(email)

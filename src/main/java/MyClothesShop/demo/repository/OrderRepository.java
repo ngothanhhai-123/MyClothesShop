@@ -1,43 +1,107 @@
 package MyClothesShop.demo.repository;
 
+import MyClothesShop.demo.dto.TopProductDTO;
 import MyClothesShop.demo.entity.Order;
 import MyClothesShop.demo.entity.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
-    // 1. Tính tổng doanh thu (Chỉ cộng tiền những đơn hàng đã hoàn thành)
+
+    // ==================================================
+    // KHU VỰC 1: CÁC HÀM TỔNG CỦA CỬA HÀNG (GIỮ NGUYÊN)
+    // ==================================================
+
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = 'COMPLETED'")
     BigDecimal sumTotalRevenue();
 
-    // 2. Đếm số lượng đơn hàng theo trạng thái (Ví dụ: đếm đơn PENDING)
     long countByStatus(OrderStatus status);
-    // 1. Thống kê theo từng NGÀY (Cần Tháng và Năm)
+
     @Query("SELECT DAY(o.orderDate), SUM(o.totalAmount) FROM Order o " +
             "WHERE YEAR(o.orderDate) = :year AND MONTH(o.orderDate) = :month AND o.status = 'COMPLETED' " +
             "GROUP BY DAY(o.orderDate) ORDER BY DAY(o.orderDate)")
     List<Object[]> getRevenueByDay(@Param("year") int year, @Param("month") int month);
 
-    // 2. Thống kê theo từng THÁNG (Chỉ cần Năm)
     @Query("SELECT MONTH(o.orderDate), SUM(o.totalAmount) FROM Order o " +
             "WHERE YEAR(o.orderDate) = :year AND o.status = 'COMPLETED' " +
             "GROUP BY MONTH(o.orderDate) ORDER BY MONTH(o.orderDate)")
     List<Object[]> getRevenueByMonth(@Param("year") int year);
 
-    // 3. Thống kê theo NĂM
     @Query("SELECT YEAR(o.orderDate), SUM(o.totalAmount) FROM Order o " +
             "WHERE o.status = 'COMPLETED' " +
             "GROUP BY YEAR(o.orderDate) ORDER BY YEAR(o.orderDate)")
     List<Object[]> getRevenueByYear();
-    // 1. Dành cho Khách hàng: Lấy các đơn của chính mình (sắp xếp mới nhất lên đầu)
+
     List<Order> findByUser_UserIdOrderByOrderDateDesc(Integer userId);
 
-    // 2. Dành cho Admin: Lấy TOÀN BỘ đơn của shop (sắp xếp mới nhất lên đầu)
     List<Order> findAllByOrderByOrderDateDesc();
+
+    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity)) " +
+            "FROM Order o " +
+            "JOIN o.orderDetails od " +
+            "JOIN od.variant cv " +
+            "JOIN cv.clothes c " +
+            "LEFT JOIN ClothesImage ci ON c.clothesId = ci.clothes.clothesId AND ci.isThumbnail = true " +
+            "WHERE o.status = 'COMPLETED' " +
+            "GROUP BY c.clothesId, c.name, ci.imageUrl " +
+            "ORDER BY SUM(od.quantity) DESC")
+    List<TopProductDTO> findTopSellingProducts(Pageable pageable);
+
+    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity)) " +
+            "FROM Order o " +
+            "JOIN o.orderDetails od " +
+            "JOIN od.variant cv " +
+            "JOIN cv.clothes c " +
+            "LEFT JOIN ClothesImage ci ON c.clothesId = ci.clothes.clothesId AND ci.isThumbnail = true " +
+            "WHERE o.status = 'COMPLETED' " +
+            "GROUP BY c.clothesId, c.name, ci.imageUrl " +
+            "HAVING SUM(od.quantity) >= 1 " +
+            "ORDER BY SUM(od.quantity) DESC")
+    List<TopProductDTO> findAllHotProducts();
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.user.userId = :userId AND o.status = 'COMPLETED'")
+    BigDecimal sumTotalAmountByUser(@Param("userId") Integer userId);
+
+
+    // ==================================================
+    // KHU VỰC 2: CÁC HÀM THỐNG KÊ SẢN PHẨM MỚI (ĐÃ ĐỔI SANG CURRENT_DATE)
+    // ==================================================
+
+    // 0. Tính tổng cục tiền của Sản phẩm mới (Cho cái hộp vuông ở trên cùng)
+    @Query("SELECT SUM(od.price * od.quantity) FROM Order o " +
+            "JOIN o.orderDetails od JOIN od.variant cv JOIN cv.clothes c " +
+            "WHERE o.status = 'COMPLETED' " +
+            "AND FUNCTION('DATEDIFF', CURRENT_DATE, c.createdAt) <= 7")
+    BigDecimal sumNewProductRevenue();
+
+    // 1. Biểu đồ theo NGÀY (Lấy các Ngày trong 1 Tháng cụ thể)
+    @Query("SELECT DAY(o.orderDate), SUM(od.price * od.quantity) FROM Order o " +
+            "JOIN o.orderDetails od JOIN od.variant cv JOIN cv.clothes c " +
+            "WHERE o.status = 'COMPLETED' AND YEAR(o.orderDate) = :year AND MONTH(o.orderDate) = :month " +
+            "AND FUNCTION('DATEDIFF', CURRENT_DATE, c.createdAt) <= 7 " +
+            "GROUP BY DAY(o.orderDate) ORDER BY DAY(o.orderDate)")
+    List<Object[]> getNewProductRevenueByDay(@Param("year") int year, @Param("month") int month);
+
+    // 2. Biểu đồ theo THÁNG (Lấy các Tháng trong 1 Năm cụ thể)
+    @Query("SELECT MONTH(o.orderDate), SUM(od.price * od.quantity) FROM Order o " +
+            "JOIN o.orderDetails od JOIN od.variant cv JOIN cv.clothes c " +
+            "WHERE o.status = 'COMPLETED' AND YEAR(o.orderDate) = :year " +
+            "AND FUNCTION('DATEDIFF', CURRENT_DATE, c.createdAt) <= 7 " +
+            "GROUP BY MONTH(o.orderDate) ORDER BY MONTH(o.orderDate)")
+    List<Object[]> getNewProductRevenueByMonth(@Param("year") int year);
+
+    // 3. Biểu đồ theo NĂM (Lấy Doanh thu của tất cả các Năm)
+    @Query("SELECT YEAR(o.orderDate), SUM(od.price * od.quantity) FROM Order o " +
+            "JOIN o.orderDetails od JOIN od.variant cv JOIN cv.clothes c " +
+            "WHERE o.status = 'COMPLETED' " +
+            "AND FUNCTION('DATEDIFF', CURRENT_DATE, c.createdAt) <= 7 " +
+            "GROUP BY YEAR(o.orderDate) ORDER BY YEAR(o.orderDate)")
+    List<Object[]> getNewProductRevenueByYear();
 }

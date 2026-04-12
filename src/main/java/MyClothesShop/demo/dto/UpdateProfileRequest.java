@@ -7,6 +7,9 @@ public class UpdateProfileRequest {
     private String fullName;
     private String phoneNumber;
 
-    // Thêm biến này để hứng địa chỉ từ Frontend gửi lên
-    private String address;
+    // Nâng cấp: Nhận 4 trường tách biệt thay vì 1 chuỗi gộp
+    private String province;
+    private String district;
+    private String ward;
+    private String addressDetail;
 }

@@ -15,6 +15,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -137,5 +138,22 @@ public class UserService {
         userRepository.save(user);
 
         return "Lấy lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.";
+    }
+    // TÍNH NĂNG MỚI: TÌM KIẾM VÀ LẤY DANH SÁCH USER
+
+    // 1. Dành cho Trang Quản Lý User của Admin (Hiển thị tất cả)
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // 2. Hàm cạo dấu và tìm kiếm User
+    public List<User> searchUsers(String keyword) {
+        // Cạo dấu từ khóa đầu vào: "Ngô Thanh" -> "ngo thanh"
+        String finalKeyword = (keyword != null && !keyword.trim().isEmpty())
+                ? MyClothesShop.demo.util.StringHelper.removeAccent(keyword.trim())
+                : "";
+
+        // ĐỔI TÊN HÀM Ở DÒNG NÀY (Từ searchUsers thành searchByKeyword)
+        return userRepository.searchByKeyword(finalKeyword);
     }
 }

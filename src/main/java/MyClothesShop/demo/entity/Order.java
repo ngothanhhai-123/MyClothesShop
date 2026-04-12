@@ -37,7 +37,9 @@ public class Order {
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
-
+    // THÊM ĐOẠN NÀY VÀO CLASS ORDER
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private java.util.List<OrderDetail> orderDetails;
     @PrePersist
     protected void onCreate() { this.orderDate = LocalDateTime.now(); }
 }

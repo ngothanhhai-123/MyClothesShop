@@ -51,6 +51,16 @@ public class ClothesController {
         return ResponseEntity.ok(clothesService.searchAndFilterClothes(keyword, categoryId, minPrice, maxPrice, colors, sizes));
     }
 
+    @GetMapping("/hot")
+    public ResponseEntity<?> getHotProducts() {
+        try {
+            // Truyền tham số 8 để lấy 8 sản phẩm
+            return ResponseEntity.ok(clothesService.getHotClothes());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi lấy sản phẩm hot: " + e.getMessage());
+        }
+    }
+
     @PostMapping(value = "/admin/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createClothes(
             @RequestPart("data") String dataJson,

@@ -1,5 +1,6 @@
 package MyClothesShop.demo.entity;
 
+import MyClothesShop.demo.util.StringHelper;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,9 @@ public class Clothes {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "search_name")
+    private String searchName;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -41,5 +45,21 @@ public class Clothes {
     private List<ClothesVariant> variants;
 
     @PrePersist
-    protected void onCreate() { this.createdAt = LocalDateTime.now(); }
+    protected void onCreate() {
+        // 1. Lưu thời gian tạo
+        this.createdAt = LocalDateTime.now();
+
+        // 2. Lưu luôn tên không dấu lúc mới tạo sản phẩm
+        if (this.name != null) {
+            this.searchName = StringHelper.removeAccent(this.name);
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        // Chỉ chạy khi sếp cập nhật (sửa) tên sản phẩm
+        if (this.name != null) {
+            this.searchName = StringHelper.removeAccent(this.name);
+        }
+    }
 }
