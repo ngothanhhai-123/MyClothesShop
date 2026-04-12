@@ -1,0 +1,15 @@
+.search-page-container { display: flex; gap: 30px; margin-top: 40px; margin-bottom: 80px; }
+        .filter-sidebar { width: 280px; flex-shrink: 0; background: #fff; padding: 20px; border: 1px solid #eaeaea; height: fit-content; }
+        .filter-group { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
+        .filter-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .filter-title { font-size: 16px; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; }
+        .filter-input { width: 100%; padding: 10px; border: 1px solid #ccc; outline: none; font-family: 'Inter', sans-serif; margin-bottom: 10px;}
+        .filter-select { width: 100%; padding: 10px; border: 1px solid #ccc; outline: none; font-family: 'Inter', sans-serif; background: #fff; }
+        .filter-btn { width: 100%; background: #000; color: #fff; padding: 12px; font-weight: bold; text-transform: uppercase; border: none; cursor: pointer; transition: 0.3s; margin-top: 10px;}
+        .filter-btn:hover { background: #333; }
+        .search-results { flex-grow: 1; }
+        .search-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .search-header h2 { font-size: 24px; }
+        .result-count { color: #666; font-size: 14px; }
+        .price-inputs { display: flex; gap: 10px; align-items: center; }
+        .price-inputs input { width: 100%; padding: 8px; border: 1px solid #ccc; outline: none; }

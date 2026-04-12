@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài khoản của tôi - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .account-page { display: flex; gap: 40px; padding: 50px 0; min-height: 70vh; align-items: flex-start; }
+        .account-sidebar { width: 260px; flex-shrink: 0; background: #fff; padding: 25px; border-radius: 8px; border: 1px solid #eee; }
+        .user-brief { display: flex; align-items: center; gap: 15px; padding-bottom: 25px; border-bottom: 1px dashed #ddd; margin-bottom: 20px; }
+        .user-avatar { width: 55px; height: 55px; border-radius: 50%; background: #000; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
+        .user-name-box { overflow: hidden; }
+        .user-name-box .label { font-size: 12px; color: #777; margin-bottom: 3px; }
+        .user-name-box .name { font-weight: 700; font-size: 16px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .account-menu { list-style: none; padding: 0; }
+        .account-menu li { margin-bottom: 8px; }
+        .account-menu a { display: flex; align-items: center; padding: 12px 15px; color: #555; text-decoration: none; border-radius: 6px; transition: 0.3s; cursor: pointer; font-weight: 500; }
+        .account-menu a i { width: 25px; font-size: 18px; }
+        .account-menu a:hover { background: #f9f9f9; color: #000; }
+        .account-menu a.active { background: #000; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        .account-content { flex-grow: 1; background: #fff; padding: 40px; border: 1px solid #eee; border-radius: 8px; }
+        .content-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .content-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .section-header { margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #f4f4f4; }
+        .section-header h2 { font-size: 22px; text-transform: uppercase; color: #333; margin-bottom: 5px; }
+        .section-header p { color: #666; font-size: 14px; }
+
+        .profile-form { max-width: 650px; }
+        .profile-form .form-group { margin-bottom: 20px; display: flex; align-items: center; }
+        .profile-form label { width: 150px; font-weight: 600; color: #555; font-size: 14px; flex-shrink: 0; }
+        .profile-form input { flex-grow: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-family: 'Inter', sans-serif; transition: 0.3s; width: 100%; box-sizing: border-box; }
+        .profile-form input:focus { border-color: #000; }
+        .profile-form input[readonly] { background: #f9f9f9; color: #888; cursor: not-allowed; border-color: #eee; }
+        
+        .btn-save-wrap { padding-left: 150px; margin-top: 30px; }
+        .btn-save { padding: 14px 35px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 15px; transition: 0.3s; text-transform: uppercase; }
+        .btn-save:hover { background: #333; }
+
+        /* CSS Chuyên cho Form Địa chỉ mới */
+        .address-update-box { background: #fdfdfd; border: 1px dashed #ccc; padding: 20px; border-radius: 8px; margin-left: 150px; margin-bottom: 20px; }
+        .address-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .custom-select { flex: 1; padding: 12px 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #666; background: #fff; transition: 0.2s; }
+        .custom-select:hover { border-color: #000; }
+        .custom-select.active { color: #111; font-weight: 500; border-color: #000; }
+        .custom-select.disabled { background: #f5f5f5; cursor: not-allowed; opacity: 0.7; pointer-events: none; }
+
+        /* Popup Địa chỉ nền đen */
+        .address-popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 10000; }
+        .address-popup.show { display: flex; animation: fadePop 0.2s; }
+        .popup-content { background: #1a1a1a; width: 90%; max-width: 450px; border-radius: 8px; overflow: hidden; color: #fff; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: slideUp 0.3s; }
+        @keyframes fadePop { from {opacity: 0;} to {opacity: 1;} }
+        @keyframes slideUp { from {transform: translateY(20px);} to {transform: translateY(0);} }
+        .popup-header { padding: 15px 20px; font-size: 15px; color: #aaa; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .close-popup { cursor: pointer; font-size: 18px; color: #fff; }
+        .popup-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+        .popup-list li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #2a2a2a; font-size: 15px; transition: 0.2s; }
+        .popup-list li:hover { background: #333; }
+        .popup-list li.selected { font-weight: 600; }
+        .popup-list li.selected::before { content: '✓ '; color: #fff; font-weight: bold; margin-right: 5px; }
+
+        /* Các style order list giữ nguyên */
+        .order-card { border: 1px solid #eee; border-radius: 8px; margin-bottom: 25px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); transition: 0.3s; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #eee; padding: 15px 20px; background: #fcfcfc; border-radius: 8px 8px 0 0; }
+        .order-id { font-weight: 700; color: #000; }
+        .order-status { font-weight: 700; text-transform: uppercase; font-size: 13px; padding: 6px 12px; border-radius: 4px; background: #fff3cd; color: #856404; }
+        .order-status.success { background: #d4edda; color: #155724; }
+        .order-body { padding: 20px; }
+        .o-item { display: flex; gap: 20px; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f9f9f9; }
+        .o-img { width: 70px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+        .o-info { flex-grow: 1; }
+        .o-name { font-weight: 600; font-size: 15px; color: #333; margin-bottom: 5px; }
+        .o-meta { font-size: 13px; color: #777; margin-bottom: 5px; }
+        .o-price { font-weight: 700; color: #000; font-size: 15px; }
+        .order-footer { display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid #eee; padding: 20px; background: #fafafa; border-radius: 0 0 8px 8px; }
+        .order-total-price { font-size: 20px; font-weight: 700; color: #c0392b; margin-left: 10px; }
+
+        /* BỔ SUNG CSS PHÂN TRANG VÀ LOADING */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; padding: 15px 0; }
+        .page-btn { min-width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .page-btn:hover { background: #f5f5f5; border-color: #ccc; }
+        .page-btn.active { background: #000; color: #fff; border-color: #000; pointer-events: none; }
+        .empty-orders { text-align: center; padding: 40px; color: #666; }
+        .empty-orders i { font-size: 30px; margin-bottom: 15px; color: #ccc; }
+
+        @media (max-width: 992px) { 
+            .account-page { flex-direction: column; } 
+            .account-sidebar, .account-content { width: 100%; }
+            .profile-form .form-group { flex-direction: column; align-items: flex-start; }
+            .profile-form label { margin-bottom: 10px; }
+            .address-update-box, .btn-save-wrap { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="container account-page">
+        <aside class="account-sidebar">
+            <div class="user-brief">
+                <div class="user-avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div class="user-name-box">
+                    <div class="label">Xin chào,</div>
+                    <div class="name" id="display-name">Khách hàng</div>
+                </div>
+            </div>
+            <ul class="account-menu">
+                <li><a class="menu-tab active" onclick="switchTab('profile', this)"><i class="fa-regular fa-id-card"></i> Hồ sơ của tôi</a></li>
+                <li><a class="menu-tab" onclick="switchTab('orders', this)"><i class="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng</a></li>
+                <li><a class="menu-tab" onclick="switchTab('password', this)"><i class="fa-solid fa-lock"></i> Đổi mật khẩu</a></li>
+                <li><a onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất</a></li>
+            </ul>
+        </aside>
+
+        <section class="account-content">
+            
+            <div id="tab-profile" class="content-section active">
+                <div class="section-header">
+                    <h2>Hồ sơ của tôi</h2>
+                    <p>Quản lý thông tin cá nhân để bảo mật tài khoản và giao hàng nhanh chóng.</p>
+                </div>
+                <div class="profile-form">
+                    <div class="form-group">
+                        <label>Họ và Tên</label>
+                        <input type="text" id="prof-name" placeholder="Nhập họ và tên đầy đủ">
+                    </div>
+                    <div class="form-group">
+                        <label>Địa chỉ Email</label>
+                        <input type="email" id="prof-email" readonly placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Số điện thoại</label>
+                        <input type="tel" id="ship-phone" class="form-control" 
+                                placeholder="Ví dụ: 0987654321" 
+                                maxlength="10" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Địa chỉ hiện tại</label>
+                        <input type="text" id="prof-address-current" readonly placeholder="Bạn chưa lưu địa chỉ nào">
+                    </div>
+
+                    <div class="address-update-box">
+                        <p style="margin: 0 0 15px 0; font-size: 14px; font-weight: 600; color: #e74c3c;">
+                            <i class="fa-solid fa-location-dot"></i> Thiết lập địa chỉ mới (Chọn lại từ đầu)
+                        </p>
+                        <div class="address-row">
+                            <div class="custom-select" id="select-province" onclick="openAddressPopup('province')">
+                                <span id="text-province">Tỉnh/Thành phố</span><i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                            </div>
+                            <div class="custom-select disabled" id="select-district" onclick="openAddressPopup('district')">
+                                <span id="text-district">Quận/Huyện</span><i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                            </div>
+                            <div class="custom-select disabled" id="select-ward" onclick="openAddressPopup('ward')">
+                                <span id="text-ward">Phường/Xã</span><i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <input type="text" id="prof-address-detail" style="width: 100%;" placeholder="Nhập số nhà, tên đường, hẻm cụ thể...">
+                        </div>
+                    </div>
+
+                    <div class="btn-save-wrap">
+                        <button class="btn-save" onclick="saveProfile()">Lưu Cập Nhật</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-orders" class="content-section">
+                <div class="section-header">
+                    <h2>Lịch sử đơn hàng</h2>
+                    <p>Theo dõi tình trạng các đơn hàng bạn đã đặt mua.</p>
+                </div>
+                
+                <div id="order-list-container">
+                    <div class="empty-orders"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải...</p></div>
+                </div>
+                <div class="pagination" id="order-pagination-container"></div>
+                
+            </div>
+
+            <div id="tab-password" class="content-section">
+                <div class="section-header">
+                    <h2>Đổi mật khẩu</h2>
+                </div>
+                <div class="profile-form">
+                    <div class="form-group"><label>Mật khẩu hiện tại</label><input type="password" id="old-password"></div>
+                    <div class="form-group"><label>Mật khẩu mới</label><input type="password" id="new-password"></div>
+                    <div class="form-group"><label>Xác nhận MK mới</label><input type="password" id="confirm-password"></div>
+                    <div class="btn-save-wrap"><button class="btn-save" onclick="updatePassword()">Xác Nhận Đổi</button></div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <div class="address-popup" id="address-popup">
+        <div class="popup-content">
+            <div class="popup-header">
+                <span id="popup-title">Vui lòng chọn tỉnh / thành phố</span>
+                <span class="close-popup" onclick="closeAddressPopup()"><i class="fa-solid fa-xmark"></i></span>
+            </div>
+            <ul class="popup-list" id="popup-list"></ul>
+        </div>
+    </div>
+
+    <div id="footer-placeholder"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        let vietnamData = [];
+        let selectedProvince = null;
+        let selectedDistrict = null;
+        let selectedWard = null;
+        let currentPopupType = '';
+
+        // BỔ SUNG BIẾN TOÀN CỤC CHO PHÂN TRANG ĐƠN HÀNG
+        let userOrders = [];
+        let orderImageDict = {};
+        let currentOrderPage = 1;
+        const ORDERS_PER_PAGE = 3; // Hiển thị 3 đơn mỗi trang cho gọn
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadUserProfile();
+            axios.get('https://provinces.open-api.vn/api/?depth=3')
+                .then(res => { vietnamData = res.data; })
+                .catch(err => console.error(err));
+        });
+
+        // CÁC HÀM XỬ LÝ ĐỊA CHỈ & PROFILE GIỮ NGUYÊN
+        function openAddressPopup(type) {
+            if (vietnamData.length === 0) { showNotification("Đang tải dữ liệu...", false); return; }
+            const listContainer = document.getElementById('popup-list');
+            listContainer.innerHTML = ''; 
+            currentPopupType = type;
+
+            if (type === 'province') {
+                document.getElementById('popup-title').innerText = "Vui lòng chọn Tỉnh / Thành phố";
+                renderAddressList(vietnamData, selectedProvince?.code);
+            } else if (type === 'district') {
+                if (!selectedProvince) return; 
+                document.getElementById('popup-title').innerText = `Chọn Quận / Huyện thuộc ${selectedProvince.name}`;
+                renderAddressList(selectedProvince.districts, selectedDistrict?.code);
+            } else if (type === 'ward') {
+                if (!selectedDistrict) return; 
+                document.getElementById('popup-title').innerText = `Chọn Phường / Xã thuộc ${selectedDistrict.name}`;
+                renderAddressList(selectedDistrict.wards, selectedWard?.code);
+            }
+            document.getElementById('address-popup').classList.add('show');
+        }
+
+        function closeAddressPopup() { document.getElementById('address-popup').classList.remove('show'); }
+
+        function renderAddressList(dataArray, currentSelectedCode) {
+            const listContainer = document.getElementById('popup-list');
+            dataArray.forEach(item => {
+                const li = document.createElement('li');
+                li.innerText = item.name;
+                if (currentSelectedCode && item.code === currentSelectedCode) li.classList.add('selected');
+                li.onclick = () => selectAddressItem(item);
+                listContainer.appendChild(li);
+            });
+        }
+
+        function selectAddressItem(item) {
+            if (currentPopupType === 'province') {
+                if (selectedProvince?.code !== item.code) {
+                    selectedProvince = item;
+                    document.getElementById('text-province').innerText = item.name;
+                    document.getElementById('select-province').classList.add('active');
+                    document.getElementById('select-district').classList.remove('disabled');
+                    document.getElementById('text-district').innerText = "Quận/Huyện";
+                    selectedDistrict = null;
+                    document.getElementById('select-ward').classList.add('disabled');
+                    document.getElementById('text-ward').innerText = "Phường/Xã";
+                    selectedWard = null;
+                }
+            } else if (currentPopupType === 'district') {
+                if (selectedDistrict?.code !== item.code) {
+                    selectedDistrict = item;
+                    document.getElementById('text-district').innerText = item.name;
+                    document.getElementById('select-district').classList.add('active');
+                    document.getElementById('select-ward').classList.remove('disabled');
+                    document.getElementById('text-ward').innerText = "Phường/Xã";
+                    selectedWard = null;
+                }
+            } else if (currentPopupType === 'ward') {
+                selectedWard = item;
+                document.getElementById('text-ward').innerText = item.name;
+                document.getElementById('select-ward').classList.add('active');
+            }
+            closeAddressPopup();
+        }
+
+        function showCustomConfirm(title, message, onConfirmCallback) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.6); z-index: 999999;
+                display: flex; align-items: center; justify-content: center;
+                opacity: 0; transition: all 0.3s ease;
+            `;
+
+            const box = document.createElement('div');
+            box.style.cssText = `
+                background: #fff; padding: 30px 25px; border-radius: 12px; width: 380px;
+                text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                transform: scale(0.9); transition: all 0.3s ease; font-family: 'Inter', sans-serif;
+            `;
+
+            box.innerHTML = `
+                <div style="font-size: 45px; color: #000; margin-bottom: 15px;"><i class="fa-regular fa-circle-question"></i></div>
+                <h3 style="margin-bottom: 10px; color: #111; font-size: 20px;">${title}</h3>
+                <p style="color: #666; margin-bottom: 30px; font-size: 15px; line-height: 1.5;">${message}</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="btn-cancel-confirm" style="padding: 12px 20px; border: 1px solid #ddd; background: #fff; color: #333; border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1; transition: 0.2s; font-size: 14px;">HỦY BỎ</button>
+                    <button id="btn-ok-confirm" style="padding: 12px 20px; border: none; background: #000; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; flex: 1; transition: 0.2s; font-size: 14px;">ĐỒNG Ý</button>
+                </div>
+            `;
+
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            const btnCancel = document.getElementById('btn-cancel-confirm');
+            const btnOk = document.getElementById('btn-ok-confirm');
+            
+            btnCancel.onmouseover = () => btnCancel.style.background = '#f5f5f5';
+            btnCancel.onmouseout = () => btnCancel.style.background = '#fff';
+            btnOk.onmouseover = () => btnOk.style.background = '#333';
+            btnOk.onmouseout = () => btnOk.style.background = '#000';
+
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+                box.style.transform = 'scale(1)';
+            }, 10);
+
+            const closeConfirm = () => {
+                overlay.style.opacity = '0';
+                box.style.transform = 'scale(0.9)';
+                setTimeout(() => overlay.remove(), 300);
+            };
+
+            btnCancel.onclick = closeConfirm;
+            btnOk.onclick = () => {
+                closeConfirm();
+                onConfirmCallback();
+            };
+        }
+
+        function loadUserProfile() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                if(typeof showNotification === 'function') showNotification("Vui lòng đăng nhập để xem thông tin!", false);
+                setTimeout(() => window.location.href = "login.html", 1500);
+                return;
+            }
+
+            axios.get('http://localhost:8080/api/profile/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => {
+                const user = res.data;
+                document.getElementById('display-name').innerText = user.fullName || "Tài khoản khách";
+                document.getElementById('prof-name').value = user.fullName || "";
+                document.getElementById('prof-email').value = user.email || "";
+                document.getElementById('prof-phone').value = user.phoneNumber || "";
+                
+                if(user.address && user.address.trim() !== "") {
+                    document.getElementById('prof-address-current').value = user.address;
+                } else {
+                    document.getElementById('prof-address-current').value = ""; 
+                }
+            })
+            .catch(err => console.error("Lỗi lấy thông tin User:", err));
+        }
+
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.menu-tab').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Chỉ fetch vỏ đơn hàng 1 lần đầu tiên khi bấm vào Tab
+            if (tabName === 'orders' && userOrders.length === 0) {
+                loadOrdersFromDB();
+            }
+        }
+
+        function updatePassword() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) return;
+
+            const oldPassword = document.getElementById('old-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                if(typeof showNotification === 'function') showNotification("Vui lòng nhập đầy đủ thông tin!", false);
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                if(typeof showNotification === 'function') showNotification("Mật khẩu mới không khớp!", false);
+                return;
+            }
+
+            const payload = { oldPassword, newPassword, confirmPassword };
+
+            axios.put('http://localhost:8080/api/profile/change-password', payload, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => {
+                if(typeof showNotification === 'function') showNotification("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+                localStorage.removeItem('jwt_token');
+                setTimeout(() => window.location.href = "login.html", 2000);
+            })
+            .catch(err => {
+                if(typeof showNotification === 'function') showNotification("Lỗi: Mật khẩu hiện tại không đúng.", false);
+            });
+        }
+
+        function saveProfile() {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) return;
+
+            let detail = document.getElementById('prof-address-detail').value.trim();
+            let prov = selectedProvince ? selectedProvince.name : null;
+            let dist = selectedDistrict ? selectedDistrict.name : null;
+            let w = selectedWard ? selectedWard.name : null;
+
+            if (prov || dist || w || detail) {
+                if (!(prov && dist && w && detail)) {
+                    if(typeof showNotification === 'function') {
+                        showNotification("Vui lòng chọn đầy đủ Tỉnh/Huyện/Xã và nhập số nhà!", false);
+                    }
+                    return;
+                }
+            }
+
+            const requestData = {
+                fullName: document.getElementById('prof-name').value,
+                phoneNumber: document.getElementById('prof-phone').value,
+                province: prov,
+                district: dist,
+                ward: w,
+                addressDetail: detail
+            };
+
+            axios.put('http://localhost:8080/api/profile/update', requestData, { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            })
+            .then(res => {
+                if(typeof showNotification === 'function') showNotification("Cập nhật thông tin thành công!");
+                document.getElementById('display-name').innerText = requestData.fullName;
+                
+                if (prov) {
+                    document.getElementById('prof-address-current').value = `${detail}, ${w}, ${dist}, ${prov}`;
+                    document.getElementById('prof-address-detail').value = '';
+                    selectedProvince = null; selectedDistrict = null; selectedWard = null;
+                    document.getElementById('text-province').innerText = "Tỉnh/Thành phố";
+                    document.getElementById('text-district').innerText = "Quận/Huyện";
+                    document.getElementById('text-ward').innerText = "Phường/Xã";
+                }
+            })
+            .catch(err => { 
+                if(typeof showNotification === 'function') showNotification("Lỗi cập nhật: " + err, false); 
+            });
+        }
+
+        function logout() {
+            showCustomConfirm("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", function() {
+                localStorage.removeItem('jwt_token');
+                window.location.href = "login.html";
+            });
+        }
+
+        // =================================================================
+        // THUẬT TOÁN ĐƠN HÀNG ĐÃ ĐƯỢC TỐI ƯU VÀ THÊM PHÂN TRANG (N+1 SOLVED)
+        // =================================================================
+
+        // BƯỚC 1: LẤY VỎ ĐƠN HÀNG VÀ TỪ ĐIỂN ẢNH VỀ TRÌNH DUYỆT (GỌI 1 LẦN DUY NHẤT)
+        async function loadOrdersFromDB() {
+            const token = localStorage.getItem('jwt_token');
+            const container = document.getElementById('order-list-container');
+            const paginationContainer = document.getElementById('order-pagination-container');
+            if (!token) return;
+
+            container.innerHTML = '<div class="empty-orders"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang kết nối kho dữ liệu...</p></div>';
+            paginationContainer.innerHTML = '';
+
+            try {
+                // 1. Tải từ điển ảnh
+                const clothesRes = await axios.get('http://localhost:8080/api/clothes?size=1000');
+                const allClothes = Array.isArray(clothesRes.data) ? clothesRes.data : (clothesRes.data.content || []);
+                orderImageDict = {};
+                allClothes.forEach(c => {
+                    const cId = c.clothesId || c.id;
+                    if (c.imageUrls && c.imageUrls.length > 0) orderImageDict[cId] = c.imageUrls[0];
+                });
+
+                // 2. Tải toàn bộ danh sách (vỏ) đơn hàng của khách này
+                const res = await axios.get('http://localhost:8080/api/orders/my-orders', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                userOrders = Array.isArray(res.data) ? res.data : (res.data.data || res.data.content || []);
+                
+                if (!userOrders || userOrders.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-orders">
+                            <i class="fa-solid fa-box-open" style="color: #ddd;"></i>
+                            <p>Bạn chưa có đơn hàng nào.</p>
+                            <a href="index.html" style="color: #000; font-weight: 600; text-decoration: underline; margin-top: 10px; display: inline-block;">Khám phá ngay</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sắp xếp đơn hàng mới nhất lên đầu
+                userOrders.sort((a,b) => (b.orderId || b.id) - (a.orderId || a.id));
+                
+                // Mặc định gọi vẽ Trang 1
+                renderOrderPage(1);
+
+            } catch (err) {
+                console.error("Lỗi hệ thống:", err);
+                container.innerHTML = `
+                    <div class="empty-orders">
+                        <i class="fa-solid fa-triangle-exclamation" style="color: #ffcc00;"></i>
+                        <p>Không thể kết nối đến máy chủ. Vui lòng thử lại sau.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // BƯỚC 2: RENDER CHI TIẾT TỪNG TRANG (TỐI ƯU TỐC ĐỘ)
+        async function renderOrderPage(page) {
+            const token = localStorage.getItem('jwt_token');
+            const container = document.getElementById('order-list-container');
+            
+            currentOrderPage = page;
+            const startIndex = (page - 1) * ORDERS_PER_PAGE;
+            const endIndex = startIndex + ORDERS_PER_PAGE;
+            
+            // Cắt mảng lấy đúng số đơn hàng cho trang hiện tại
+            const ordersToShow = userOrders.slice(startIndex, endIndex);
+
+            // Hiện loading trong lúc chờ lấy ruột chi tiết của các đơn này
+            container.innerHTML = '<div class="empty-orders"><i class="fa-solid fa-spinner fa-spin"></i><p>Đang tải chi tiết đơn hàng...</p></div>';
+
+            const formatImageUrl = (dbImage) => {
+                if (!dbImage) return '';
+                let strImg = String(dbImage);
+                if (strImg.startsWith('http')) return strImg;
+                if (!strImg.includes('.')) strImg += '.jpg';
+                let cleanPath = strImg.replace('/uploads/', '').replace('uploads/', '');
+                return 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+            };
+
+            let html = '';
+
+            // Vòng lặp này chạy cực nhanh vì chỉ lấy chi tiết của 3 đơn thay vì 30 đơn
+            for (let o of ordersToShow) {
+                let itemsHtml = '';
+                const oId = o.orderId || o.id || o.order_id;
+
+                try {
+                    // Gọi API lấy Ruột đơn
+                    const detailRes = await axios.get(`http://localhost:8080/api/orders/${oId}/details`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    let detailsArray = [];
+                    if (detailRes.data && Array.isArray(detailRes.data.items)) detailsArray = detailRes.data.items; 
+                    else if (Array.isArray(detailRes.data)) detailsArray = detailRes.data; 
+
+                    if (detailsArray && detailsArray.length > 0) {
+                        itemsHtml = detailsArray.map(i => {
+                            const name = i.productName || i.clothesName || i.name || 'Sản phẩm';
+                            const color = i.color || 'Mặc định';
+                            const size = i.size || 'Mặc định';
+                            const qty = i.quantity || i.qty || 1;
+                            const price = i.price || i.unitPrice || 0;
+
+                            const cId = i.clothesId || i.productId || i.id;
+                            let rawImg = orderImageDict[cId] || i.imageUrl || i.image;
+                            let imgUrl = rawImg ? formatImageUrl(rawImg) : `https://ui-avatars.com/api/?name=${encodeURIComponent(name.substring(0, 2))}&background=f4f4f4&color=333`;
+
+                            return `
+                                <div class="o-item">
+                                    <img src="${imgUrl}" class="o-img" alt="${name}" onerror="this.src='https://ui-avatars.com/api/?name=SP&background=f4f4f4&color=333'">
+                                    <div class="o-info">
+                                        <div class="o-name">${name}</div>
+                                        <div class="o-meta">Phân loại: ${color}, ${size}</div>
+                                        <div class="o-meta">Số lượng: x${qty}</div>
+                                    </div>
+                                    <div class="o-price">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        itemsHtml = '<p style="color:#888; font-size:13px; font-style: italic;">Đơn hàng này chưa có sản phẩm nào.</p>';
+                    }
+
+                } catch(err) {
+                    console.error(`Lỗi khi gọi chi tiết đơn ${oId}:`, err);
+                    itemsHtml = '<p style="color:red; font-size:13px;">Lỗi tải chi tiết đơn hàng.</p>';
+                }
+
+                let statusTxt = o.status || 'Đang xử lý';
+                let statusClass = (statusTxt.toLowerCase().includes('hoàn thành') || statusTxt.toLowerCase().includes('thành công') || statusTxt === 'COMPLETED') ? 'success' : '';
+                let orderTotalVal = o.totalAmount || o.totalPrice || 0;
+
+                html += `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-id-wrap">Mã Đơn Hàng: <span class="order-id">#${oId}</span></div>
+                            <div class="order-status ${statusClass}">${statusTxt}</div>
+                        </div>
+                        <div class="order-body">
+                            ${itemsHtml}
+                        </div>
+                        <div class="order-footer">
+                            <div class="order-total-wrap">Tổng tiền thanh toán: 
+                                <span class="order-total-price">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(orderTotalVal)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            renderOrderPagination();
+        }
+
+        // BƯỚC 3: RENDER NÚT BẤM PHÂN TRANG
+        function renderOrderPagination() {
+            const totalPages = Math.ceil(userOrders.length / ORDERS_PER_PAGE);
+            const paginationContainer = document.getElementById('order-pagination-container');
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            
+            // Nút Lùi
+            if (currentOrderPage > 1) {
+                html += `<button class="page-btn" onclick="renderOrderPage(${currentOrderPage - 1})"><i class="fa-solid fa-chevron-left"></i></button>`;
+            }
+
+            // In các số trang
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentOrderPage) {
+                    html += `<button class="page-btn active">${i}</button>`;
+                } else {
+                    html += `<button class="page-btn" onclick="renderOrderPage(${i})">${i}</button>`;
+                }
+            }
+
+            // Nút Tiến
+            if (currentOrderPage < totalPages) {
+                html += `<button class="page-btn" onclick="renderOrderPage(${currentOrderPage + 1})"><i class="fa-solid fa-chevron-right"></i></button>`;
+            }
+
+            paginationContainer.innerHTML = html;
+            
+            // Scroll nhẹ lên đầu danh sách để khách hàng trải nghiệm mượt mà
+            document.getElementById('tab-orders').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+</html>

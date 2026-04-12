@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Khách hàng - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; text-align: center; min-width: 100px; }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-locked { background: #ffebee; color: #c62828; }
+        .btn-toggle { background: #f0f0f0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; color: #333; }
+        .btn-toggle:hover { background: #e0e0e0; }
+        .btn-toggle.locked { color: #c62828; }
+        .btn-toggle.unlocked { color: #2e7d32; }
+
+        .header-actions { display: flex; gap: 15px; align-items: center; }
+        .filter-select { padding: 8px 15px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-family: 'Inter'; font-weight: 500; cursor: pointer; }
+        .total-spent { font-weight: 700; color: #c0392b; }
+        
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; padding: 15px 0; }
+        .page-btn { min-width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .page-btn:hover { background: #f5f5f5; border-color: #ccc; }
+        .page-btn.active { background: #000; color: #fff; border-color: #000; pointer-events: none; }
+
+        /* CSS MỚI CHO POPUP SẮP XẾP TỔNG CHI TIÊU */
+        .sort-dropdown-container { position: relative; display: inline-block; margin-left: 8px; }
+        .btn-filter { background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; color: #555; transition: 0.2s; padding: 4px 8px; font-size: 12px; }
+        .btn-filter:hover { background: #e5e7eb; color: #111; }
+        .sort-dropdown { position: absolute; top: 120%; right: 0; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; width: 180px; z-index: 10; display: none; flex-direction: column; overflow: hidden; }
+        .sort-dropdown.show { display: flex; }
+        .sort-option { padding: 10px 15px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 1px solid #eee; transition: 0.2s; color: #333; text-align: left; }
+        .sort-option:last-child { border-bottom: none; }
+        .sort-option:hover { background: #f3f4f6; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">MY<span>CLOTHES</span></div>
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html"><i class="fa-solid fa-house"></i> Tổng quan</a></li>
+            <li><a href="admin-categories.html"><i class="fa-solid fa-layer-group"></i> Danh mục</a></li>
+            <li><a href="admin-products.html"><i class="fa-solid fa-shirt"></i> Sản phẩm</a></li>
+            <li><a href="admin-orders.html"><i class="fa-solid fa-file-invoice-dollar"></i> Đơn hàng</a></li>
+            <li><a href="admin-users.html" class="active"><i class="fa-solid fa-users"></i> Khách hàng</a></li>
+        </ul>
+        <div class="admin-info" onclick="logoutAdmin()">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=444&color=fff" class="avatar">
+            <div class="details"><div class="name">Super Admin</div><div class="role">Đăng xuất</div></div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <h2>Quản lý khách hàng</h2>
+            <div class="header-actions">
+                <select id="user-status-filter" class="filter-select" onchange="applyFilters()">
+                    <option value="ALL">Tất cả trạng thái</option>
+                    <option value="ACTIVE">Đang hoạt động</option>
+                    <option value="LOCKED">Đã khóa</option>
+                </select>
+                <div class="search-bar" style="margin: 0;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="user-search-input" placeholder="Tìm tên, email, SĐT..." oninput="triggerSearch()">
+                </div>
+            </div>
+        </header>
+
+        <section class="content-body">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Danh sách khách hàng</h3>
+                    <button class="btn-primary" onclick="loadUsers()"><i class="fa-solid fa-rotate-right"></i> Làm mới</button>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; width: 22%;">Khách hàng</th>
+                            <th style="text-align: left; width: 20%;">Email</th>
+                            <th style="text-align: left; width: 13%;">Số điện thoại</th>
+                            <th style="text-align: right; width: 18%;">
+                                Tổng chi tiêu
+                                <div class="sort-dropdown-container">
+                                    <button class="btn-filter" onclick="toggleSortPopup(event)">
+                                        <i class="fa-solid fa-filter"></i> Lọc
+                                    </button>
+                                    <div class="sort-dropdown" id="sort-popup">
+                                        <div class="sort-option" onclick="applySort('none', event)">Mặc định (ID)</div>
+                                        <div class="sort-option" onclick="applySort('desc', event)"><i class="fa-solid fa-arrow-down-9-1"></i> Chi tiêu nhiều nhất</div>
+                                        <div class="sort-option" onclick="applySort('asc', event)"><i class="fa-solid fa-arrow-up-1-9"></i> Chi tiêu ít nhất</div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th style="text-align: center; width: 12%;">Trạng thái</th>
+                            <th style="text-align: right; width: 15%;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        <tr><td colspan="6" align="center" style="padding: 30px;">Đang tải dữ liệu...</td></tr>
+                    </tbody>
+                </table>
+                <div class="pagination" id="pagination-container"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/common.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const token = localStorage.getItem('jwt_token');
+        const API_USER = 'http://localhost:8080/api/admin/users';
+
+        let allUsers = [];        
+        let filteredUsers = [];   
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 5; 
+        
+        // Biến trạng thái sắp xếp mới
+        let sortOrder = 'none'; // 'none', 'desc', 'asc'
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!token) { window.location.href = "login.html"; return; }
+            loadUsers();
+        });
+
+        function loadUsers() {
+            axios.get(API_USER, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => {
+                allUsers = res.data.filter(u => {
+                    const role = (u.role || '').toUpperCase();
+                    return role !== 'ADMIN' && role !== 'ROLE_ADMIN';
+                });
+                applyFilters(); 
+            })
+            .catch(err => {
+                if(typeof showNotification === 'function') showNotification("Lỗi tải danh sách", false);
+            });
+        }
+
+        // ĐÓNG/MỞ POPUP SẮP XẾP
+        function toggleSortPopup(e) {
+            e.stopPropagation(); 
+            document.getElementById('sort-popup').classList.toggle('show');
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.btn-filter') && !event.target.matches('.fa-filter')) {
+                let dropdowns = document.getElementsByClassName("sort-dropdown");
+                for (let i = 0; i < dropdowns.length; i++) {
+                    if (dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show');
+                }
+            }
+        }
+
+        // --- XỬ LÝ TÌM KIẾM & LỌC (SIÊU TỐC ĐỘ BẰNG JS) ---
+        let searchTimeout;
+        function triggerSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => { applyFilters(); }, 300);
+        }
+
+        // Bảo bối cạo 67 loại dấu Tiếng Việt phiên bản Javascript
+        function removeAccent(str) {
+            if (!str) return '';
+            return str.normalize('NFD') 
+                      .replace(/[\u0300-\u036f]/g, '') 
+                      .replace(/đ/g, 'd').replace(/Đ/g, 'D') 
+                      .toLowerCase(); 
+        }
+
+        // THUẬT TOÁN GỘP: TÌM KIẾM (KHÔNG DẤU) + TRẠNG THÁI + SẮP XẾP TỔNG TIỀN
+        function applyFilters() {
+            // Lấy từ khóa và cạo sạch dấu ngay lập tức
+            const rawKeyword = document.getElementById('user-search-input').value.trim();
+            const keyword = removeAccent(rawKeyword);
+            
+            const statusFilter = document.getElementById('user-status-filter').value;
+
+            // 1. Lọc theo chữ & Trạng thái
+            filteredUsers = allUsers.filter(u => {
+                // Lột sạch dấu của tên, email và sđt trước khi so sánh
+                const cleanName = removeAccent(u.fullName);
+                const cleanEmail = removeAccent(u.email);
+                const cleanPhone = removeAccent(u.phoneNumber);
+
+                const matchKeyword = cleanName.includes(keyword) || 
+                                     cleanEmail.includes(keyword) || 
+                                     cleanPhone.includes(keyword);
+                                     
+                const isActive = u.status === 'ACTIVE';
+                const matchStatus = statusFilter === 'ALL' || 
+                                    (statusFilter === 'ACTIVE' && isActive) || 
+                                    (statusFilter === 'LOCKED' && !isActive);
+                return matchKeyword && matchStatus;
+            });
+
+            // 2. Sắp xếp theo Tiền
+            if (sortOrder === 'desc') {
+                filteredUsers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0));
+            } else if (sortOrder === 'asc') {
+                filteredUsers.sort((a, b) => (a.totalSpent || 0) - (b.totalSpent || 0));
+            } else {
+                // Mặc định xếp theo ID mới nhất lên đầu
+                filteredUsers.sort((a, b) => b.userId - a.userId);
+            }
+
+            renderPage(1);
+        }
+
+        function renderPage(page) {
+            currentPage = page;
+            const tbody = document.getElementById('user-table-body');
+            const paginationContainer = document.getElementById('pagination-container');
+
+            if (filteredUsers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 30px; color: #888;">Không tìm thấy khách hàng nào.</td></tr>';
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const currentItems = filteredUsers.slice(startIndex, endIndex);
+
+            tbody.innerHTML = currentItems.map(u => {
+                const realId = u.userId; 
+                const isActive = u.status === 'ACTIVE'; 
+                const spent = u.totalSpent || 0; 
+                const spentFormatted = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(spent);
+
+                return `
+                    <tr>
+                        <td style="text-align: left;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <img src="https://ui-avatars.com/api/?name=${u.fullName || u.email}&background=random" class="user-avatar">
+                                <b>${u.fullName || 'Chưa cập nhật'}</b>
+                            </div>
+                        </td>
+                        <td style="text-align: left;">${u.email}</td>
+                        <td style="text-align: left;">${u.phoneNumber || 'Chưa cập nhật'}</td> 
+                        <td style="text-align: right;" class="total-spent">${spentFormatted}</td>
+                        <td style="text-align: center;">
+                            <span class="status-badge ${isActive ? 'status-active' : 'status-locked'}">
+                                ${isActive ? 'Đang hoạt động' : 'Đã khóa'}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn-toggle ${isActive ? 'locked' : 'unlocked'}" onclick="toggleUserStatus(${realId})">
+                                <i class="fa-solid ${isActive ? 'fa-lock' : 'fa-unlock'}"></i> 
+                                ${isActive ? 'Khóa' : 'Mở khóa'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            const paginationContainer = document.getElementById('pagination-container');
+            if (totalPages <= 1) { paginationContainer.innerHTML = ''; return; }
+            let html = '';
+            if (currentPage > 1) html += `<button class="page-btn" onclick="renderPage(${currentPage - 1})"><i class="fa-solid fa-chevron-left"></i></button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) html += `<button class="page-btn active">${i}</button>`;
+                else html += `<button class="page-btn" onclick="renderPage(${i})">${i}</button>`;
+            }
+            if (currentPage < totalPages) html += `<button class="page-btn" onclick="renderPage(${currentPage + 1})"><i class="fa-solid fa-chevron-right"></i></button>`;
+            paginationContainer.innerHTML = html;
+        }
+
+        function toggleUserStatus(userId) {
+            axios.put(`${API_USER}/${userId}/toggle-status`, {}, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => {
+                if(typeof showNotification === 'function') showNotification("Đã cập nhật trạng thái!");
+                loadUsers(); 
+            })
+            .catch(err => {
+                let errorMsg = err.response?.data?.message || err.response?.data || "Lỗi hệ thống!";
+                if(typeof showNotification === 'function') showNotification("Lỗi: " + errorMsg, false);
+            });
+        }
+
+        function logoutAdmin() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+    </script>
+</body>
+</html>

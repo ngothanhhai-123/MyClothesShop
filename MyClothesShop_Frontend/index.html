@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyClothesShop - Trang Chủ</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .hero { height: 550px; background: url('https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat; display: flex; align-items: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); }
+        .hero-content { position: relative; z-index: 2; color: var(--white); max-width: 600px; padding-left: 50px; }
+        .hero-title { font-size: 48px; font-weight: 800; margin-bottom: 15px; line-height: 1.2; }
+        .hero-desc { font-size: 18px; margin-bottom: 30px; font-weight: 300; }
+        .btn { display: inline-block; padding: 12px 30px; background: var(--white); color: var(--primary-color); font-weight: 700; text-transform: uppercase; border: 2px solid var(--white); cursor: pointer; }
+        
+        /* Bổ sung tem MỚI và HOT trên ảnh sản phẩm (tùy chọn cho đẹp) */
+        .badge-new { position: absolute; top: 10px; left: 10px; background-color: #10b981; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; z-index: 10; }
+        .product-img { position: relative; }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">PHONG CÁCH <br> CỦA NGƯỜI DẪN ĐẦU</h1>
+                <p class="hero-desc">Bộ sưu tập Thu Đông 2026 với chất liệu Premium Cotton thoáng mát, thiết kế tối giản nhưng đầy cuốn hút.</p>
+                <a href="category.html" class="btn">Mua Ngay</a>
+            </div>
+        </div>
+    </section>
+
+    <main class="container" id="main-content">
+        <p style="text-align: center; padding: 50px; color: #666;">Đang tải bộ sưu tập...</p>
+    </main>
+
+    <div id="footer-placeholder"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/common.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetchClothesByCategory();
+        });
+
+        function extractCatInfo(cloth, catList) {
+            let cId = cloth.categoryId || cloth.category_id || cloth.id_category;
+            let cName = cloth.categoryName || cloth.category_name;
+            if (cloth.category) {
+                cId = cId || cloth.category.categoryId || cloth.category.id;
+                cName = cName || cloth.category.name;
+            }
+            if (cId && !cName) {
+                let found = catList.find(c => (c.categoryId || c.id) == cId);
+                if (found) cName = found.name;
+            }
+            if (cName && !cId) {
+                let found = catList.find(c => c.name === cName);
+                if (found) cId = found.categoryId || found.id;
+            }
+            return { id: cId || 1, name: cName || 'Sản phẩm khác' };
+        }
+
+        // Logic kiểm tra hàng mới (Dưới 7 ngày)
+        function checkIsNewProduct(p) {
+            let isNew = p.isNewProduct;
+            if (isNew === undefined && p.createdAt) {
+                let createdDate;
+                if (Array.isArray(p.createdAt)) {
+                    createdDate = new Date(p.createdAt[0], p.createdAt[1] - 1, p.createdAt[2], p.createdAt[3] || 0, p.createdAt[4] || 0);
+                } else {
+                    createdDate = new Date(p.createdAt);
+                }
+                if (!isNaN(createdDate)) {
+                    const diffDays = Math.ceil(Math.abs(new Date() - createdDate) / (1000 * 60 * 60 * 24)); 
+                    isNew = (diffDays <= 7);
+                }
+            }
+            return isNew;
+        }
+
+        function buildProductCard(item) {
+            const id = item.clothesId || item.id;
+            let price = (item.variants && item.variants.length > 0) ? item.variants[0].price : 0;
+            const priceVND = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+
+            let imageUrl = 'https://via.placeholder.com/500x750?text=No+Image'; 
+            if (item.imageUrls && item.imageUrls.length > 0) {
+                let dbImage = item.imageUrls[0]; 
+                if (!dbImage.includes('.')) dbImage += '.jpg';
+                let cleanPath = dbImage.replace('/uploads/', '').replace('uploads/', '');
+                imageUrl = dbImage.startsWith('http') ? dbImage : 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+            }
+
+            // Gắn tem MỚI nếu là sản phẩm mới
+            const isNew = checkIsNewProduct(item);
+            const badgeHtml = isNew ? '<span class="badge-new">MỚI</span>' : '';
+
+            return `
+                <div class="product-card">
+                    <div class="product-img">
+                        ${badgeHtml}
+                        <a href="detail.html?id=${id}">
+                            <img src="${imageUrl}" alt="${item.name}">
+                        </a>
+                        <div class="add-cart-btn" onclick="window.location.href='detail.html?id=${id}'">CHỌN SIZE / MÀU</div>
+                    </div>
+                    <div class="product-info">
+                        <a href="detail.html?id=${id}" class="product-name">${item.name}</a>
+                        <span class="product-price">${priceVND}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function fetchClothesByCategory() {
+            Promise.all([
+                axios.get('http://localhost:8080/api/categories'),
+                axios.get('http://localhost:8080/api/clothes?size=1000'),
+                axios.get('http://localhost:8080/api/clothes/hot') 
+            ])
+            .then(responses => {
+                const allCategories = Array.isArray(responses[0].data) ? responses[0].data : (responses[0].data.content || responses[0].data.data || []);
+                const allClothes = Array.isArray(responses[1].data) ? responses[1].data : (responses[1].data.content || responses[1].data.data || []);
+                const hotRaw = Array.isArray(responses[2].data) ? responses[2].data : (responses[2].data.content || responses[2].data.data || []);
+                
+                const mainContainer = document.getElementById('main-content');
+                
+                if(allClothes.length === 0) {
+                    mainContainer.innerHTML = '<p style="text-align:center; padding: 50px;">Kho hàng đang trống!</p>';
+                    return;
+                }
+
+                let htmlContent = '';
+
+                // --- 1. RENDER KHU VỰC SẢN PHẨM HOT ---
+                const hotClothesFull = hotRaw.map(hotItem => allClothes.find(c => (c.clothesId || c.id) == (hotItem.clothesId || hotItem.id))).filter(c => c);
+
+                if (hotClothesFull.length > 0) {
+                    const displayHot = hotClothesFull.slice(0, 4); 
+                    htmlContent += `
+                    <section class="section" style="background: #fff9f9; padding: 20px; border-radius: 10px; margin-bottom: 40px;">
+                        <div class="section-header">
+                            <h2 class="section-title" style="color: #e74c3c;">SẢN PHẨM HOT 🔥</h2>
+                        </div>
+                        <div class="product-grid">
+                            ${displayHot.map(item => buildProductCard(item)).join('')}
+                        </div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="category.html?type=hot" class="btn" style="background: #e74c3c; color: white; border: 2px solid #e74c3c; transition: 0.3s;" onmouseover="this.style.background='white'; this.style.color='#e74c3c'" onmouseout="this.style.background='#e74c3c'; this.style.color='white'">
+                                XEM TẤT CẢ SẢN PHẨM HOT
+                            </a>
+                        </div>
+                    </section>
+                    `;
+                }
+
+                // --- 2. RENDER KHU VỰC SẢN PHẨM MỚI ---
+                // Lọc ra các sản phẩm mới từ danh sách tất cả sản phẩm
+                const newClothesFull = allClothes.filter(c => checkIsNewProduct(c));
+                
+                // Đảo ngược mảng để sản phẩm mới nhất lên đầu
+                newClothesFull.sort((a, b) => (b.clothesId || b.id) - (a.clothesId || a.id));
+
+                if (newClothesFull.length > 0) {
+                    const displayNew = newClothesFull.slice(0, 4); 
+                    htmlContent += `
+                    <section class="section" style="background: #ecfdf5; padding: 20px; border-radius: 10px; margin-bottom: 40px;">
+                        <div class="section-header">
+                            <h2 class="section-title" style="color: #10b981;">SẢN PHẨM MỚI TỚI ✨</h2>
+                        </div>
+                        <div class="product-grid">
+                            ${displayNew.map(item => buildProductCard(item)).join('')}
+                        </div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="category.html?type=new" class="btn" style="background: #10b981; color: white; border: 2px solid #10b981; transition: 0.3s;" onmouseover="this.style.background='white'; this.style.color='#10b981'" onmouseout="this.style.background='#10b981'; this.style.color='white'">
+                                XEM TẤT CẢ SẢN PHẨM MỚI
+                            </a>
+                        </div>
+                    </section>
+                    `;
+                }
+
+                // --- 3. RENDER CÁC DANH MỤC BÌNH THƯỜNG ---
+                const categoriesMap = {};
+                allClothes.forEach(item => {
+                    const catInfo = extractCatInfo(item, allCategories);
+                    if (!categoriesMap[catInfo.name]) categoriesMap[catInfo.name] = { id: catInfo.id, items: [] };
+                    categoriesMap[catInfo.name].items.push(item);
+                });
+
+                for (const [catName, catData] of Object.entries(categoriesMap)) {
+                    if(catData.items.length === 0) continue;
+                    const displayItems = catData.items.slice(0, 4);
+
+                    htmlContent += `
+                    <section class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">${catName}</h2>
+                        </div>
+                        <div class="product-grid">
+                            ${displayItems.map(item => buildProductCard(item)).join('')}
+                        </div>
+                        <div style="text-align: center; margin-top: 40px;">
+                            <a href="category.html?id=${catData.id}" class="btn" style="background: white; color: black; border: 2px solid black; transition: 0.3s;" onmouseover="this.style.background='black'; this.style.color='white'" onmouseout="this.style.background='white'; this.style.color='black'">
+                                XEM TẤT CẢ ${catName.toUpperCase()}
+                            </a>
+                        </div>
+                    </section>
+                    `;
+                }
+
+                mainContainer.innerHTML = htmlContent;
+            })
+            .catch(err => {
+                console.error("Lỗi dữ liệu:", err);
+                document.getElementById('main-content').innerHTML = '<p style="text-align:center; padding: 50px; color:red;">Lỗi tải dữ liệu, vui lòng kiểm tra F12 Console!</p>';
+            });
+        }
+    </script>
+</body>
+</html>

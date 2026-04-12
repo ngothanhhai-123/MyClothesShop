@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Đơn hàng - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .btn-view { background: #f0f0f0; color: #333; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-weight: 600; transition: 0.2s; }
+        .btn-view:hover { background: #e0e0e0; }
+        
+        /* Modal chi tiết */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: #fff; width: 650px; max-height: 85vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; overflow-y: auto; }
+        .m-item { display: flex; gap: 15px; border-bottom: 1px solid #f9f9f9; padding-bottom: 15px; margin-bottom: 15px; align-items: center; }
+        .m-img { width: 60px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+        
+        .order-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 14px; }
+
+        /* BỔ SUNG CSS PHÂN TRANG VÀ TÌM KIẾM */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; padding: 15px 0; }
+        .page-btn { min-width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .page-btn:hover { background: #f5f5f5; border-color: #ccc; }
+        .page-btn.active { background: #000; color: #fff; border-color: #000; pointer-events: none; }
+        
+        /* CSS Thanh tìm kiếm nhẹ nhàng cho Admin */
+        .search-box-admin { display: flex; align-items: center; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 0 12px; height: 38px; }
+        .search-box-admin input { border: none; outline: none; padding: 0 8px; width: 220px; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .search-box-admin i { color: #888; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">MY<span>CLOTHES</span></div>
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html"><i class="fa-solid fa-chart-line"></i> Tổng quan</a></li>
+            <li><a href="admin-categories.html"><i class="fa-solid fa-layer-group"></i> Danh mục</a></li>
+            <li><a href="admin-products.html"><i class="fa-solid fa-shirt"></i> Sản phẩm</a></li>
+            <li><a href="admin-orders.html" class="active"><i class="fa-solid fa-file-invoice-dollar"></i> Đơn hàng</a></li>
+            <li><a href="admin-users.html"><i class="fa-solid fa-users"></i> Khách hàng</a></li>
+        </ul>
+        <div class="admin-info" onclick="logoutAdmin()">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=444&color=fff" class="avatar">
+            <div class="details"><div class="name">Super Admin</div><div class="role">Đăng xuất</div></div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <h2>Quản lý Đơn hàng</h2>
+            <div class="filter-group" style="display: flex; gap: 10px; align-items: center;">
+                
+                <div class="search-box-admin">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="order-search-input" placeholder="Tìm tên khách hàng..." oninput="triggerSearch()">
+                </div>
+
+                <select id="status-filter" class="status-select" style="width: 170px;" onchange="applyFilters()">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="PENDING">Chờ xác nhận</option>
+                    <option value="CONFIRMED">Đã xác nhận</option>
+                    <option value="SHIPPING">Đang giao</option>
+                    <option value="COMPLETED">Đã giao</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                </select>
+                
+                <select id="date-sort" class="status-select" style="width: 180px;" onchange="applyFilters()">
+                    <option value="DESC">Mới nhất xếp trước</option>
+                    <option value="ASC">Cũ nhất xếp trước</option>
+                </select>
+
+                <button class="btn-primary" onclick="loadAdminOrders()" style="height: 38px; padding: 0 15px;"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+        </header>
+
+        <section class="content-body">
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã ĐH</th>
+                            <th>Khách hàng</th>
+                            <th>Ngày đặt</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-order-list">
+                        <tr><td colspan="6" align="center">Đang tải đơn hàng...</td></tr>
+                    </tbody>
+                </table>
+                <div class="pagination" id="pagination-container"></div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Chi tiết đơn hàng</h3>
+                <i class="fa-solid fa-xmark" style="cursor:pointer" onclick="closeModal()"></i>
+            </div>
+            <div class="modal-body" id="modal-content">
+                </div>
+        </div>
+    </div>
+    <script src="js/common.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const token = localStorage.getItem('jwt_token');
+
+        let allOrders = [];
+        let filteredOrders = [];
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 7; 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!token) { window.location.href = "login.html"; return; }
+            loadAdminOrders();
+        });
+
+        // 1. TẢI DỮ LIỆU TỪ SERVER VỀ
+        function loadAdminOrders() {
+            axios.get('http://localhost:8080/api/orders/admin', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => {
+                allOrders = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                applyFilters(); 
+            })
+            .catch(err => {
+                console.error("Lỗi tải đơn hàng:", err);
+                document.getElementById('admin-order-list').innerHTML = '<tr><td colspan="6" align="center" style="color:red;">Lỗi khi tải dữ liệu!</td></tr>';
+            });
+        }
+
+        // ==========================================
+        // 2. THUẬT TOÁN TÌM KIẾM, LỌC VÀ SẮP XẾP
+        // ==========================================
+        
+        let searchTimeout;
+        function triggerSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => { applyFilters(); }, 300);
+        }
+
+        // Bảo bối lột dấu
+        function removeAccent(str) {
+            if (!str) return '';
+            return str.normalize('NFD') 
+                      .replace(/[\u0300-\u036f]/g, '') 
+                      .replace(/đ/g, 'd').replace(/Đ/g, 'D') 
+                      .toLowerCase(); 
+        }
+
+        function applyFilters() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateSort = document.getElementById('date-sort').value;
+            
+            // Lấy từ khóa và lột dấu ngay
+            const rawKeyword = document.getElementById('order-search-input').value.trim();
+            const keyword = removeAccent(rawKeyword);
+
+            filteredOrders = allOrders.filter(o => {
+                // Điều kiện 1: Trạng thái
+                const matchStatus = (statusFilter === '') || (o.status === statusFilter);
+
+                // Điều kiện 2: Tên khách hàng (cạo dấu)
+                const cleanName = removeAccent(o.customerName);
+                const matchName = cleanName.includes(keyword);
+
+                return matchStatus && matchName;
+            });
+
+            // Sắp xếp theo ngày
+            filteredOrders.sort((a, b) => {
+                const timeA = new Date(a.orderDate || 0).getTime();
+                const timeB = new Date(b.orderDate || 0).getTime();
+                
+                if (dateSort === 'DESC') {
+                    // Mới nhất xếp trước
+                    return (timeB !== timeA) ? (timeB - timeA) : ((b.orderId || b.id) - (a.orderId || a.id));
+                } else {
+                    // Cũ nhất xếp trước
+                    return (timeB !== timeA) ? (timeA - timeB) : ((a.orderId || a.id) - (b.orderId || b.id));
+                }
+            });
+            
+            renderPage(1); // Vẽ lại bảng bắt đầu từ trang 1
+        }
+
+        // 3. VẼ BẢNG THEO TRANG
+        function renderPage(page) {
+            currentPage = page;
+            const tbody = document.getElementById('admin-order-list');
+            const paginationContainer = document.getElementById('pagination-container');
+
+            if (filteredOrders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 40px; color: #888;">Không tìm thấy đơn hàng nào phù hợp.</td></tr>';
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const currentItems = filteredOrders.slice(startIndex, endIndex);
+
+            tbody.innerHTML = currentItems.map(o => {
+                const status = o.status || 'PENDING';
+                const dateObj = o.orderDate ? new Date(o.orderDate) : null;
+                const dateStr = dateObj ? 
+                                `${dateObj.toLocaleDateString('vi-VN')} ${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}` 
+                                : 'N/A';
+
+                return `
+                    <tr>
+                        <td style="font-weight:700;">#${o.orderId || o.id}</td>
+                        <td><b>${o.customerName}</b><br><small>${o.customerEmail}</small></td>
+                        <td>${dateStr}</td>
+                        <td style="color:#c0392b; font-weight:700;">${new Intl.NumberFormat('vi-VN').format(o.totalAmount)}đ</td>
+                        <td>
+                            <select class="status-select ${status.toLowerCase()}" onchange="updateStatus(${o.orderId || o.id}, this.value, this)">
+                                <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>Chờ xác nhận</option>
+                                <option value="CONFIRMED" ${status === 'CONFIRMED' ? 'selected' : ''}>Đã xác nhận</option>
+                                <option value="SHIPPING" ${status === 'SHIPPING' ? 'selected' : ''}>Đang giao</option>
+                                <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>Đã giao</option>
+                                <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>Đã hủy</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-view" onclick="viewOrderDetails(${o.orderId || o.id})"><i class="fa-solid fa-eye"></i> Xem</button></td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPagination(totalPages);
+        }
+
+        // 4. VẼ NÚT BẤM CHUYỂN TRANG
+        function renderPagination(totalPages) {
+            const container = document.getElementById('pagination-container');
+            if (totalPages <= 1) { container.innerHTML = ''; return; }
+            
+            let html = '';
+            if (currentPage > 1) html += `<button class="page-btn" onclick="renderPage(${currentPage - 1})"><i class="fa-solid fa-chevron-left"></i></button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) html += `<button class="page-btn active">${i}</button>`;
+                else html += `<button class="page-btn" onclick="renderPage(${i})">${i}</button>`;
+            }
+            if (currentPage < totalPages) html += `<button class="page-btn" onclick="renderPage(${currentPage + 1})"><i class="fa-solid fa-chevron-right"></i></button>`;
+            
+            container.innerHTML = html;
+        }
+
+        function updateStatus(orderId, newStatus, selectEl) {
+            axios.put(`http://localhost:8080/api/orders/admin/${orderId}/status?status=${newStatus}`, null, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(() => {
+                selectEl.className = `status-select ${newStatus.toLowerCase()}`;
+                
+                const updatedOrder = allOrders.find(o => (o.orderId || o.id) == orderId);
+                if(updatedOrder) updatedOrder.status = newStatus;
+
+                if(typeof showNotification === 'function') showNotification("Đã cập nhật trạng thái!");
+            })
+            .catch(err => {
+                console.error("Lỗi cập nhật đơn hàng:", err.response);
+                let errorMsg = "Không thể cập nhật trạng thái này!";
+                if(err.response && err.response.data) {
+                    errorMsg = err.response.data.message || err.response.data || errorMsg;
+                }
+                
+                if(typeof showNotification === 'function') {
+                    showNotification("Lỗi: " + errorMsg, false);
+                } else {
+                    alert("Lỗi: " + errorMsg);
+                }
+                
+                loadAdminOrders(); 
+            });
+        }
+
+        function viewOrderDetails(orderId) {
+            document.getElementById('order-modal').style.display = 'flex';
+            const content = document.getElementById('modal-content');
+            content.innerHTML = 'Đang tải...';
+
+            axios.get(`http://localhost:8080/api/orders/${orderId}/details`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => {
+                const data = res.data;
+                const items = data.items || [];
+                const info = data.orderInfo || {};
+
+                let html = `
+                    <div class="order-info-grid">
+                        <div><b>📍 Địa chỉ:</b> ${info.shippingAddress || 'N/A'}</div>
+                        <div><b>👤 Khách hàng:</b> ${info.customerName}</div>
+                        <div><b>📞 Email:</b> ${info.customerEmail}</div>
+                        <div><b>📝 Ghi chú:</b> ${info.note || 'Trống'}</div>
+                    </div>
+                    <h4>Sản phẩm trong đơn:</h4><br>
+                `;
+
+                html += items.map(i => {
+                    const img = (i.imageUrl || 'default.jpg').startsWith('http') ? i.imageUrl : `http://localhost:8080/uploads/${i.imageUrl}`;
+                    return `
+                        <div class="m-item">
+                            <img src="${img}" class="m-img" onerror="this.src='https://via.placeholder.com/60x80'">
+                            <div style="flex-grow:1;">
+                                <div style="font-weight:600;">${i.productName}</div>
+                                <div style="font-size:12px; color:#666;">${i.color} - ${i.size} | SL: x${i.quantity}</div>
+                            </div>
+                            <b style="color:#c0392b;">${new Intl.NumberFormat('vi-VN').format(i.price)}đ</b>
+                        </div>
+                    `;
+                }).join('');
+
+                content.innerHTML = html;
+            });
+        }
+
+        function closeModal() { document.getElementById('order-modal').style.display = 'none'; }
+        function logoutAdmin() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+    </script>
+</body>
+</html>

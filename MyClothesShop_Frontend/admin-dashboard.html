@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tổng quan Dashboard - MyClothesShop</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .filter-group { display: flex; gap: 15px; align-items: center; }
+        .hidden { display: none !important; }
+        .sidebar-menu li a i { margin-right: 12px; width: 20px; text-align: center; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .mt-4 { margin-top: 30px; }
+        .table-responsive { overflow-x: auto; }
+        .top-product-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .top-product-table th { padding: 12px 15px; border-bottom: 2px solid #eee; color: #555; font-weight: 600; }
+        .top-product-table td { padding: 12px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .top-product-table tr:hover { background-color: #f9f9f9; }
+        .product-info-cell { display: flex; align-items: center; gap: 15px; }
+        .product-name { font-weight: 500; color: #333; }
+        .rank-1 { color: #f1c40f; font-weight: 800; font-size: 1.1em; }
+        .rank-2 { color: #95a5a6; font-weight: 800; font-size: 1.1em; }
+        .rank-3 { color: #d35400; font-weight: 800; font-size: 1.1em; }
+        .rank-normal { color: #7f8c8d; font-weight: 600; }
+        .sold-qty { color: #27ae60; font-weight: 700; }
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+        @media (max-width: 1200px) { .chart-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">MY<span>CLOTHES</span></div>
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html" class="active"><i class="fa-solid fa-chart-line"></i> Tổng quan</a></li>
+            <li><a href="admin-categories.html"><i class="fa-solid fa-layer-group"></i> Danh mục</a></li>
+            <li><a href="admin-products.html"><i class="fa-solid fa-shirt"></i> Sản phẩm</a></li>
+            <li><a href="admin-orders.html"><i class="fa-solid fa-file-invoice-dollar"></i> Đơn hàng</a></li>
+            <li><a href="admin-users.html"><i class="fa-solid fa-users"></i> Khách hàng</a></li>
+        </ul>
+        <div class="admin-info" onclick="logoutAdmin()">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=444&color=fff" class="avatar">
+            <div class="details"><div class="name">Super Admin</div><div class="role">Đăng xuất</div></div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <h2>Bảng điều khiển hệ thống</h2>
+        </header>
+
+        <section class="content-body">
+            <div class="stat-grid">
+                <div class="stat-card"><div class="stat-info"><h4 id="box-pending-orders">0</h4><p>Đơn chờ xác nhận</p></div><div class="stat-icon" style="background: #fff3cd; color: #856404;"><i class="fa-solid fa-clock-rotate-left"></i></div></div>
+                <div class="stat-card"><div class="stat-info"><h4 id="box-total-orders">0</h4><p>Tổng đơn hàng</p></div><div class="stat-icon icon-blue"><i class="fa-solid fa-cart-shopping"></i></div></div>
+                <div class="stat-card"><div class="stat-info"><h4 id="box-total-revenue">0đ</h4><p>Tổng doanh thu</p></div><div class="stat-icon icon-green"><i class="fa-solid fa-money-bill-wave"></i></div></div>
+                <div class="stat-card"><div class="stat-info"><h4 id="box-total-customers">0</h4><p>Khách hàng</p></div><div class="stat-icon icon-orange"><i class="fa-solid fa-users"></i></div></div>
+                <div class="stat-card"><div class="stat-info"><h4 id="box-total-products">0</h4><p>Sản phẩm trong kho</p></div><div class="stat-icon icon-red"><i class="fa-solid fa-shirt"></i></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
+                    <h3>Thống kê Doanh Thu</h3>
+                    <div class="filter-group">
+                        <select id="filter-type" class="status-select" onchange="toggleFilterInputs()">
+                            <option value="daily">Xem theo Ngày (Trong tháng)</option>
+                            <option value="monthly">Xem theo Tháng (Trong năm)</option>
+                            <option value="yearly">Xem theo Năm (Tất cả các năm)</option>
+                        </select>
+                        <select id="select-year" class="status-select" onchange="loadChartData()">
+                            <option value="2026">2026</option><option value="2025">2025</option>
+                        </select>
+                        <select id="select-month" class="status-select" onchange="loadChartData()">
+                            <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option><option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8">Tháng 8</option><option value="9">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="card" style="margin-top: 0;">
+                    <div class="card-header"><h3 style="font-size: 16px; color: #333;">Biểu đồ Toàn bộ cửa hàng</h3></div>
+                    <div style="padding: 20px;"><div style="height: 300px;"><canvas id="revenueChart"></canvas></div></div>
+                </div>
+                <div class="card" style="margin-top: 0;">
+                    <div class="card-header"><h3 style="font-size: 16px; color: #10b981;">Biểu đồ Sản phẩm MỚI (< 7 Ngày)</h3></div>
+                    <div style="padding: 20px;"><div style="height: 300px;"><canvas id="newProductChart"></canvas></div></div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header"><h3>Top Sản phẩm bán chạy nhất</h3></div>
+                <div style="padding: 20px;" class="table-responsive">
+                    <table class="top-product-table">
+                        <thead><tr><th width="10%">Hạng</th><th width="60%">Sản phẩm</th><th width="30%" style="text-align: right;">Số lượng đã bán</th></tr></thead>
+                        <tbody id="top-selling-body">
+                            <tr><td colspan="3" style="text-align: center; color: #888;">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let myChart = null; let newChart = null; 
+        const token = localStorage.getItem('jwt_token');
+        const API_BASE = 'http://localhost:8080/api/admin/dashboard';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!token) { window.location.href = "login.html"; return; }
+            initDateSelectors(); 
+            loadBoxStats();
+            loadChartData(); 
+            loadTopSelling(); 
+        });
+
+        function initDateSelectors() {
+            const today = new Date();
+            document.getElementById('select-year').value = today.getFullYear();
+            document.getElementById('select-month').value = today.getMonth() + 1;
+        }
+
+        // Logic Ẩn/Hiện Dropdown
+        function toggleFilterInputs() {
+            const type = document.getElementById('filter-type').value;
+            const yearSelect = document.getElementById('select-year');
+            const monthSelect = document.getElementById('select-month');
+            
+            if (type === 'daily') {
+                yearSelect.classList.remove('hidden'); monthSelect.classList.remove('hidden');
+            } else if (type === 'monthly') {
+                yearSelect.classList.remove('hidden'); monthSelect.classList.add('hidden');
+            } else if (type === 'yearly') {
+                yearSelect.classList.add('hidden'); monthSelect.classList.add('hidden');
+            }
+            loadChartData();
+        }
+
+        function loadBoxStats() {
+            axios.get(API_BASE, { headers: { 'Authorization': `Bearer ${token}` } }).then(res => {
+                const d = res.data;
+                document.getElementById('box-total-orders').innerText = d.totalOrders || 0;
+                document.getElementById('box-total-customers').innerText = d.totalCustomers || 0;
+                document.getElementById('box-total-products').innerText = d.totalProducts || 0;
+                document.getElementById('box-total-revenue').innerText = new Intl.NumberFormat('vi-VN').format(d.totalRevenue || 0) + 'đ';
+                document.getElementById('box-pending-orders').innerText = d.pendingOrders || 0;
+            }).catch(err => console.error(err));
+        }
+
+        // Thuật toán gán Data chuẩn xác
+        function processChartData(apiData, type, year, month) {
+            let fullLabels = []; let fullValues = []; 
+            
+            // XỬ LÝ THEO NĂM (Lấy trực tiếp từ Database)
+            if (type === 'yearly') {
+                if (apiData && apiData.length > 0) {
+                    apiData.sort((a, b) => parseInt(a.label) - parseInt(b.label)); // Xếp năm tăng dần
+                    apiData.forEach(item => {
+                        fullLabels.push('Năm ' + item.label);
+                        fullValues.push(item.value);
+                    });
+                } else {
+                    fullLabels.push('Năm ' + new Date().getFullYear());
+                    fullValues.push(0);
+                }
+                return { labels: fullLabels, values: fullValues };
+            }
+
+            // XỬ LÝ THEO THÁNG VÀ NGÀY (Lấp đầy số 0)
+            let dataMap = {};
+            if (apiData && apiData.length > 0) {
+                apiData.forEach(item => {
+                    let cleanLabel = String(item.label).replace(/\D/g, ''); 
+                    dataMap[parseInt(cleanLabel)] = item.value;
+                });
+            }
+
+            if (type === 'monthly') {
+                for (let i = 1; i <= 12; i++) { 
+                    fullLabels.push('Tháng ' + i); 
+                    fullValues.push(dataMap[i] || 0); 
+                }
+            } else if (type === 'daily') {
+                let daysInMonth = new Date(year, month, 0).getDate();
+                for (let i = 1; i <= daysInMonth; i++) { 
+                    fullLabels.push('Ngày ' + i); 
+                    fullValues.push(dataMap[i] || 0); 
+                }
+            }
+            return { labels: fullLabels, values: fullValues };
+        }
+
+        function loadChartData() {
+            const type = document.getElementById('filter-type').value;
+            const year = parseInt(document.getElementById('select-year').value);
+            const month = parseInt(document.getElementById('select-month').value);
+
+            let totalApiUrl = `${API_BASE}/chart/${type}`; 
+
+            // Gọi API Doanh thu Tổng
+            axios.get(totalApiUrl, { params: { year, month }, headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => {
+                const processed = processChartData(res.data, type, year, month);
+                renderChart('revenueChart', processed.labels, processed.values, 'Tổng Doanh Thu (VNĐ)', '#000', 'rgba(0, 0, 0, 0.05)', myChart, (inst) => myChart = inst);
+            }).catch(err => console.error("Lỗi biểu đồ tổng: ", err));
+
+            // Gọi API Doanh thu SP Mới
+            axios.get(`${API_BASE}/chart-new/${type}`, { params: { year, month }, headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => {
+                const processed = processChartData(res.data, type, year, month);
+                renderChart('newProductChart', processed.labels, processed.values, 'Doanh thu SP Mới (VNĐ)', '#10b981', 'rgba(16, 185, 129, 0.1)', newChart, (inst) => newChart = inst);
+            }).catch(err => console.error("Lỗi biểu đồ SP Mới: ", err));
+        }
+
+        function renderChart(canvasId, labels, values, labelTitle, borderColor, bgColor, chartInstance, updateRef) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            const newInst = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: labelTitle, data: values, borderColor: borderColor, backgroundColor: bgColor, borderWidth: 3, fill: true, tension: 0.3, pointBackgroundColor: borderColor, pointRadius: 3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => v >= 1000000 ? (v/1000000)+'tr' : v.toLocaleString('vi-VN') } } } }
+            });
+            updateRef(newInst);
+        }
+
+        function loadTopSelling() {
+            axios.get(`${API_BASE}/top-selling`, { headers: { 'Authorization': `Bearer ${token}` } }).then(res => {
+                const products = res.data.data || res.data;
+                const tbody = document.getElementById('top-selling-body');
+                tbody.innerHTML = ''; 
+                if (!products || products.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Chưa có dữ liệu.</td></tr>'; return; }
+                products.forEach((prod, index) => {
+                    let rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'rank-normal';
+                    tbody.innerHTML += `<tr><td class="${rankClass}">#${index + 1}</td><td><div class="product-info-cell"><span class="product-name">${prod.productName || prod.name}</span></div></td><td style="text-align: right;" class="sold-qty">${prod.totalSold || prod.quantity}</td></tr>`;
+                });
+            }).catch(err => console.error(err));
+        }
+        function logoutAdmin() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+    </script>
+</body>
+</html>

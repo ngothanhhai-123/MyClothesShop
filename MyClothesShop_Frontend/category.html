@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Mục Sản Phẩm - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* CSS CHUYÊN DỤNG CHO THANH PHÂN TRANG */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 50px;
+            padding-bottom: 20px;
+        }
+        .page-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .page-btn:hover {
+            background: #f5f5f5;
+        }
+        .page-btn.active {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+            pointer-events: none;
+        }
+
+        /* Bổ sung CSS cho tem MỚI */
+        .badge-new { position: absolute; top: 10px; left: 10px; background-color: #10b981; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; z-index: 10; }
+        .product-img { position: relative; }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title" id="category-title">ĐANG TẢI...</h1>
+        </div>
+    </div>
+
+    <main class="container" style="margin-bottom: 80px; min-height: 400px;">
+        <div class="product-grid" id="category-product-grid">
+            <p style="text-align: center; grid-column: 1/-1; color: #666;">Đang tải dữ liệu sản phẩm...</p>
+        </div>
+        
+        <div class="pagination" id="pagination-container"></div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/common.js"></script>
+    
+    <script>
+        let globalFilteredClothes = []; 
+        const ITEMS_PER_PAGE = 8;       
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const categoryId = urlParams.get('id');
+            const type = urlParams.get('type'); 
+
+            // Xử lý URL ?type=hot
+            if (type === 'hot') {
+                document.getElementById('category-title').innerText = "SẢN PHẨM HOT BÁN CHẠY NHẤT";
+                document.getElementById('category-title').style.color = "#e74c3c"; 
+                fetchHotProductsOnly();
+            } 
+            // Xử lý URL ?type=new
+            else if (type === 'new') {
+                document.getElementById('category-title').innerText = "SẢN PHẨM MỚI TỚI";
+                document.getElementById('category-title').style.color = "#10b981"; // Màu xanh lá cho chuẩn bộ nhận diện
+                fetchNewProductsOnly();
+            }
+            // Logic cũ: Xem theo danh mục hoặc xem tất cả
+            else if (!categoryId) {
+                document.getElementById('category-title').innerText = "TẤT CẢ SẢN PHẨM";
+                fetchCategoryAndProducts(null);
+            } else {
+                fetchCategoryAndProducts(categoryId);
+            }
+        });
+
+        // Hàm kiểm tra logic Hàng Mới (< 7 ngày)
+        function checkIsNewProduct(p) {
+            let isNew = p.isNewProduct;
+            if (isNew === undefined && p.createdAt) {
+                let createdDate;
+                if (Array.isArray(p.createdAt)) {
+                    createdDate = new Date(p.createdAt[0], p.createdAt[1] - 1, p.createdAt[2], p.createdAt[3] || 0, p.createdAt[4] || 0);
+                } else {
+                    createdDate = new Date(p.createdAt);
+                }
+                if (!isNaN(createdDate)) {
+                    const diffDays = Math.ceil(Math.abs(new Date() - createdDate) / (1000 * 60 * 60 * 24)); 
+                    isNew = (diffDays <= 7);
+                }
+            }
+            return isNew;
+        }
+
+        // HÀM MỚI: Xử lý chuyên biệt cho trang MỚI
+        function fetchNewProductsOnly() {
+            axios.get('http://localhost:8080/api/clothes?size=1000')
+            .then(response => {
+                const allClothes = Array.isArray(response.data) ? response.data : (response.data.content || response.data.data || []);
+                
+                // Lọc ra các sản phẩm thỏa mãn điều kiện mới
+                globalFilteredClothes = allClothes.filter(c => checkIsNewProduct(c));
+                
+                // Xếp sản phẩm mới nhất lên trên cùng
+                globalFilteredClothes.sort((a, b) => (b.clothesId || b.id) - (a.clothesId || a.id));
+
+                renderProductsByPage(1);
+            })
+            .catch(err => {
+                console.error("Lỗi tải hàng Mới!", err);
+                document.getElementById('category-product-grid').innerHTML = '<p style="text-align:center; grid-column: 1/-1; color:red;">Hệ thống đang bận, vui lòng thử lại sau!</p>';
+            });
+        }
+
+        // Xử lý chuyên biệt cho trang HOT
+        function fetchHotProductsOnly() {
+            Promise.all([
+                axios.get('http://localhost:8080/api/clothes?size=1000'),
+                axios.get('http://localhost:8080/api/clothes/hot')
+            ])
+            .then(responses => {
+                const allClothes = Array.isArray(responses[0].data) ? responses[0].data : (responses[0].data.content || responses[0].data.data || []);
+                const hotRaw = Array.isArray(responses[1].data) ? responses[1].data : (responses[1].data.content || responses[1].data.data || []);
+
+                globalFilteredClothes = hotRaw.map(hotItem => allClothes.find(c => (c.clothesId || c.id) == (hotItem.clothesId || hotItem.id))).filter(c => c);
+                
+                renderProductsByPage(1);
+            })
+            .catch(err => {
+                console.error("Lỗi tải hàng Hot!", err);
+                document.getElementById('category-product-grid').innerHTML = '<p style="text-align:center; grid-column: 1/-1; color:red;">Hệ thống đang bận, vui lòng thử lại sau!</p>';
+            });
+        }
+
+        // Xử lý xem theo danh mục
+        function fetchCategoryAndProducts(categoryId) {
+            Promise.all([
+                axios.get('http://localhost:8080/api/categories'),
+                axios.get('http://localhost:8080/api/clothes?size=1000') 
+            ])
+            .then(responses => {
+                const allCategories = Array.isArray(responses[0].data) ? responses[0].data : (responses[0].data.content || responses[0].data.data || []);
+                const allClothes = Array.isArray(responses[1].data) ? responses[1].data : (responses[1].data.content || responses[1].data.data || []);
+
+                const currentCat = allCategories.find(c => (c.categoryId || c.id) == categoryId);
+                if (categoryId) document.getElementById('category-title').innerText = currentCat ? currentCat.name.toUpperCase() : "SẢN PHẨM";
+
+                let validCategoryIds = [];
+                if (categoryId) {
+                    const targetId = parseInt(categoryId);
+                    validCategoryIds.push(targetId);
+                    
+                    allCategories.forEach(c => {
+                        const currentId = c.categoryId || c.id;
+                        const parentId = c.parentId || (c.parent ? (c.parent.categoryId || c.parent.id) : null);
+                        if (parentId == targetId) validCategoryIds.push(parseInt(currentId));
+                    });
+                }
+
+                if (categoryId) {
+                    globalFilteredClothes = allClothes.filter(item => {
+                        let cId = item.categoryId || (item.category ? item.category.categoryId : null);
+                        return validCategoryIds.includes(parseInt(cId));
+                    });
+                } else {
+                    globalFilteredClothes = allClothes;
+                }
+
+                renderProductsByPage(1);
+            })
+            .catch(err => console.error(err));
+        }
+
+        // --- CÁC HÀM RENDER ---
+        function renderProductsByPage(pageNumber) {
+            const productGrid = document.getElementById('category-product-grid');
+            
+            if (globalFilteredClothes.length === 0) {
+                productGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1; padding: 50px;">Không có sản phẩm nào để hiển thị.</p>';
+                document.getElementById('pagination-container').innerHTML = '';
+                return;
+            }
+
+            const totalItems = globalFilteredClothes.length;
+            const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+            
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageNumber > totalPages) pageNumber = totalPages;
+
+            const startIndex = (pageNumber - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const currentItems = globalFilteredClothes.slice(startIndex, endIndex);
+
+            let htmlContent = '';
+            currentItems.forEach(item => {
+                const id = item.clothesId || item.id;
+                let price = (item.variants && item.variants.length > 0) ? item.variants[0].price : 0;
+                const priceVND = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+
+                let imageUrl = 'https://via.placeholder.com/500x750?text=No+Image'; 
+                if (item.imageUrls && item.imageUrls.length > 0) {
+                    let dbImage = item.imageUrls[0]; 
+                    if (!dbImage.includes('.')) dbImage += '.jpg';
+                    let cleanPath = dbImage.replace('/uploads/', '').replace('uploads/', '');
+                    imageUrl = dbImage.startsWith('http') ? dbImage : 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+                }
+
+                // Gắn tem MỚI nếu thỏa điều kiện
+                const isNew = checkIsNewProduct(item);
+                const badgeHtml = isNew ? '<span class="badge-new">MỚI</span>' : '';
+
+                htmlContent += `
+                    <div class="product-card">
+                        <div class="product-img">
+                            ${badgeHtml}
+                            <a href="detail.html?id=${id}">
+                                <img src="${imageUrl}" alt="${item.name}">
+                            </a>
+                            <div class="add-cart-btn" onclick="window.location.href='detail.html?id=${id}'">CHỌN SIZE / MÀU</div>
+                        </div>
+                        <div class="product-info">
+                            <a href="detail.html?id=${id}" class="product-name">${item.name}</a>
+                            <span class="product-price">${priceVND}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            productGrid.innerHTML = htmlContent;
+            renderPaginationUI(pageNumber, totalPages);
+            document.getElementById('category-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function renderPaginationUI(currentPage, totalPages) {
+            const paginationContainer = document.getElementById('pagination-container');
+            if (totalPages <= 1) { paginationContainer.innerHTML = ''; return; }
+
+            let pageHtml = '';
+            if (currentPage > 1) pageHtml += `<button class="page-btn" onclick="renderProductsByPage(${currentPage - 1})"><i class="fa-solid fa-chevron-left"></i></button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) pageHtml += `<button class="page-btn active">${i}</button>`;
+                else pageHtml += `<button class="page-btn" onclick="renderProductsByPage(${i})">${i}</button>`;
+            }
+            if (currentPage < totalPages) pageHtml += `<button class="page-btn" onclick="renderProductsByPage(${currentPage + 1})"><i class="fa-solid fa-chevron-right"></i></button>`;
+            
+            paginationContainer.innerHTML = pageHtml;
+        }
+    </script>
+</body>
+</html>

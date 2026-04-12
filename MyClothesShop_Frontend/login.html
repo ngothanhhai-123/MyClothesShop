@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập / Đăng ký - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/login.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+
+    <div class="banner-side">
+        <div class="banner-overlay"></div>
+        <div class="brand-logo">MY<span>CLOTHES</span></div>
+        <div class="banner-text">
+            <h1>Phong cách<br>tạo nên sự khác biệt.</h1>
+            <p>Khám phá bộ sưu tập thời trang cao cấp mới nhất mùa hè 2026.</p>
+        </div>
+    </div>
+
+    <div class="form-side">
+        
+        <div class="form-wrapper fade-in" id="loginForm">
+            <div class="form-header">
+                <h2>Chào mừng trở lại</h2>
+                <p>Vui lòng đăng nhập để tiếp tục mua sắm</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)">
+                <p id="error-msg" style="color: red; font-size: 13px; margin-bottom: 15px; display: none;">Sai email hoặc mật khẩu!</p>
+                
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="input-field" placeholder="name@example.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required>
+                    <i class="fa-regular fa-eye input-icon"></i>
+                </div>
+                
+                <div style="text-align: right; margin-bottom: 20px;">
+                    <span class="forgot-pass link" onclick="switchForm('forgot')" style="font-size: 14px; cursor: pointer; color: #333; font-weight: 500;">Quên mật khẩu?</span>
+                </div>
+
+                <button type="submit" class="btn-submit">Đăng nhập</button>
+            </form>
+
+            <div class="form-footer">
+                Chưa có tài khoản? <span class="link" onclick="switchForm('register')">Đăng ký ngay</span>
+            </div>
+        </div>
+
+        <div class="form-wrapper hidden" id="registerForm">
+            <div class="form-header">
+                <h2>Tạo tài khoản</h2>
+                <p>Trở thành thành viên để nhận ưu đãi</p>
+            </div>
+
+            <form onsubmit="handleRegister(event)">
+                <p id="reg-msg" style="font-size: 13px; margin-bottom: 15px; display: none;"></p>
+
+                <div class="input-group">
+                    <label>Họ và tên</label>
+                    <input type="text" id="regName" class="input-field" placeholder="Nguyễn Văn A" required>
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" class="input-field" placeholder="name@example.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="regPassword" class="input-field" placeholder="Tối thiểu 8 ký tự" required>
+                </div>
+                
+                <div style="font-size: 12px; color: #666; margin-bottom: 20px;">
+                    Bằng việc đăng ký, bạn đồng ý với <a href="#" class="link">Điều khoản</a> & <a href="#" class="link">Chính sách</a> của chúng tôi.
+                </div>
+
+                <button type="submit" class="btn-submit">Đăng ký tài khoản</button>
+            </form>
+
+            <div class="form-footer">
+                Đã có tài khoản? <span class="link" onclick="switchForm('login')">Đăng nhập</span>
+            </div>
+        </div>
+
+        <div class="form-wrapper hidden" id="forgotForm">
+            <div class="form-header">
+                <h2>Quên mật khẩu?</h2>
+                <p>Nhập email của bạn để nhận mã xác nhận OTP</p>
+            </div>
+            
+            <form onsubmit="handleForgotPassword(event)">
+                <p id="forgot-msg" style="font-size: 13px; margin-bottom: 15px; display: none;"></p>
+                
+                <div class="input-group">
+                    <label>Email đã đăng ký</label>
+                    <input type="email" id="forgotEmail" class="input-field" placeholder="name@example.com" required>
+                </div>
+                
+                <button type="submit" class="btn-submit" id="btn-send-otp">Gửi mã OTP</button>
+            </form>
+            
+            <div class="form-footer">
+                <span class="link" onclick="switchForm('login')" style="cursor: pointer;"><i class="fa-solid fa-arrow-left"></i> Quay lại đăng nhập</span>
+            </div>
+        </div>
+
+        <div class="form-wrapper hidden" id="resetForm">
+            <div class="form-header">
+                <h2>Đặt lại mật khẩu</h2>
+                <p>Mã OTP 6 số đã được gửi đến email của bạn</p>
+            </div>
+            
+            <form onsubmit="handleResetPassword(event)">
+                <p id="reset-msg" style="font-size: 13px; margin-bottom: 15px; display: none;"></p>
+                
+                <div class="input-group">
+                    <label>Mã xác nhận (OTP)</label>
+                    <input type="text" id="resetOtp" class="input-field" placeholder="Nhập 6 số OTP" required>
+                </div>
+                <div class="input-group">
+                    <label>Mật khẩu mới</label>
+                    <input type="password" id="resetNewPassword" class="input-field" placeholder="••••••••" required>
+                </div>
+                <div class="input-group">
+                    <label>Xác nhận mật khẩu mới</label>
+                    <input type="password" id="resetConfirmPassword" class="input-field" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" class="btn-submit">Xác nhận đổi mật khẩu</button>
+            </form>
+            
+            <div class="form-footer">
+                <span class="link" onclick="switchForm('login')" style="cursor: pointer;">Hủy bỏ</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/common.js"></script>
+    
+    <script>
+        // Hàm hiển thị thông báo tạm (phòng trường hợp sếp chưa có file common.js)
+
+        // 1. Hàm chuyển đổi giữa 4 form
+        function switchForm(type) {
+            const forms = ['loginForm', 'registerForm', 'forgotForm', 'resetForm'];
+            forms.forEach(formId => {
+                const form = document.getElementById(formId);
+                if (formId === type + 'Form') {
+                    form.classList.remove('hidden');
+                    form.classList.add('fade-in');
+                } else {
+                    form.classList.add('hidden');
+                    form.classList.remove('fade-in');
+                }
+            });
+        }
+
+        // 2. Hàm xử lý ĐĂNG NHẬP
+        function handleLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            const dataGuiDi = { email: email, password: password };
+
+            axios.post('http://localhost:8080/api/auth/login', dataGuiDi)
+                .then(function (response) {
+                    const token = response.data.token;
+                    localStorage.setItem('jwt_token', token);
+                    showNotification("Đăng nhập thành công!");
+                    
+                    const payloadBase64 = token.split('.')[1]; 
+                    const decodedPayload = JSON.parse(atob(payloadBase64)); 
+                    const fullTokenString = JSON.stringify(decodedPayload).toUpperCase();
+
+                    if (fullTokenString.includes('ADMIN')) {
+                        window.location.href = "admin-dashboard.html"; 
+                    } else {
+                        window.location.href = "index.html"; 
+                    }
+                })
+                .catch(function (error) {
+                    errorMsg.style.display = 'block';
+                    if (error.code === 'ERR_NETWORK') {
+                        errorMsg.innerText = "Lỗi mạng: Backend chưa chạy hoặc bị chặn CORS!";
+                    } else {
+                        errorMsg.innerText = "Sai email hoặc mật khẩu! Vui lòng thử lại.";
+                    }
+                });
+        }
+
+        // 3. Hàm xử lý ĐĂNG KÝ
+        function handleRegister(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const regMsg = document.getElementById('reg-msg');
+
+            const dataGuiDi = {
+                fullName: name, 
+                email: email,
+                password: password
+            };
+
+            axios.post('http://localhost:8080/api/auth/register', dataGuiDi)
+                .then(function (response) {
+                    regMsg.style.color = 'green';
+                    regMsg.innerText = "Đăng ký thành công! Đang chuyển sang đăng nhập...";
+                    regMsg.style.display = 'block';
+
+                    setTimeout(() => {
+                        switchForm('login');
+                        document.getElementById('loginEmail').value = email;
+                        regMsg.style.display = 'none';
+                    }, 1500);
+                })
+                .catch(function (error) {
+                    regMsg.style.color = 'red';
+                    regMsg.style.display = 'block';
+                    
+                    if (error.response) {
+                        regMsg.innerText = error.response.data.message || "Email đã tồn tại hoặc dữ liệu không hợp lệ!";
+                    } else if (error.code === 'ERR_NETWORK') {
+                        regMsg.innerText = "Lỗi mạng: Backend chưa chạy hoặc bị chặn CORS!";
+                    } else {
+                        regMsg.innerText = "Đăng ký thất bại. Vui lòng thử lại!";
+                    }
+                });
+        }
+
+        // 4. Hàm xử lý BƯỚC 1: GỬI OTP (QUÊN MẬT KHẨU)
+        function handleForgotPassword(event) {
+            event.preventDefault();
+            const email = document.getElementById('forgotEmail').value;
+            const msgBox = document.getElementById('forgot-msg');
+            const btn = document.getElementById('btn-send-otp');
+
+            msgBox.style.display = 'none';
+            btn.innerText = "Đang gửi email...";
+            btn.disabled = true;
+
+            axios.post('http://localhost:8080/api/auth/forgot-password', { email: email })
+                .then(function (response) {
+                    btn.innerText = "Gửi mã OTP";
+                    btn.disabled = false;
+                    
+                    // Chuyển sang form nhập OTP
+                    switchForm('reset');
+                    
+                    // Hiện thông báo xanh ở form reset
+                    const resetMsg = document.getElementById('reset-msg');
+                    resetMsg.style.color = 'green';
+                    resetMsg.innerText = "Mã OTP đã được gửi! Vui lòng kiểm tra hộp thư đến (hoặc thư rác).";
+                    resetMsg.style.display = 'block';
+                })
+                .catch(function (error) {
+                    btn.innerText = "Gửi mã OTP";
+                    btn.disabled = false;
+                    msgBox.style.color = 'red';
+                    msgBox.style.display = 'block';
+                    msgBox.innerText = error.response?.data || "Lỗi: Không thể gửi email. Vui lòng thử lại!";
+                });
+        }
+
+        // 5. Hàm xử lý BƯỚC 2: XÁC NHẬN ĐỔI MẬT KHẨU
+        function handleResetPassword(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('forgotEmail').value; // Lấy lại email từ form trước
+            const otp = document.getElementById('resetOtp').value;
+            const newPassword = document.getElementById('resetNewPassword').value;
+            const confirmPassword = document.getElementById('resetConfirmPassword').value;
+            const msgBox = document.getElementById('reset-msg');
+
+            if (newPassword !== confirmPassword) {
+                msgBox.style.color = 'red';
+                msgBox.innerText = "Mật khẩu xác nhận không khớp!";
+                msgBox.style.display = 'block';
+                return;
+            }
+
+            const payload = {
+                email: email,
+                otp: otp,
+                newPassword: newPassword,
+                confirmPassword: confirmPassword
+            };
+
+            axios.post('http://localhost:8080/api/auth/reset-password', payload)
+                .then(function (response) {
+                    msgBox.style.color = 'green';
+                    msgBox.innerText = "Đổi mật khẩu thành công! Đang chuyển về đăng nhập...";
+                    msgBox.style.display = 'block';
+
+                    setTimeout(() => {
+                        switchForm('login');
+                        document.getElementById('loginEmail').value = email; // Điền sẵn email để đăng nhập luôn
+                        document.getElementById('loginPassword').value = ''; // Reset ô password
+                        msgBox.style.display = 'none';
+                    }, 2000);
+                })
+                .catch(function (error) {
+                    msgBox.style.color = 'red';
+                    msgBox.style.display = 'block';
+                    msgBox.innerText = error.response?.data || "Mã OTP không đúng hoặc đã hết hạn!";
+                });
+        }
+    </script>
+</body>
+</html>
