@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tìm kiếm sản phẩm - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/search.css">
+    <style>
+        /* Trói chặt Header không cho giãn tràn 100% màn hình */
+        .header-inner, .header-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* ================= BỌC LÓT GIAO DIỆN TUYỆT ĐỐI ================= */
+        
+        /* 1. Ép 3 cột bằng nhau chính xác */
+        .search-results .product-grid { 
+            grid-template-columns: repeat(3, minmax(0, 1fr)); 
+            gap: 25px; 
+        }
+
+        /* 2. Ép Card thành Flexbox để các thành phần bên trong co giãn đồng đều */
+        .search-results .product-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* 3. Padding-top Hack: Bất tử trên mọi trình duyệt, ép ảnh chuẩn tỷ lệ 3:4 */
+        .search-results .product-img {
+            width: 100%;
+            padding-top: 133.33%; /* 4 chia 3 nhân 100% = 133.33% */
+            position: relative;
+            background-color: #f9f9f9;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .search-results .product-img img {
+            position: absolute;
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        /* 4. Vùng thông tin đẩy giá tiền xuống đáy */
+        .search-results .product-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding-top: 15px;
+        }
+
+        /* 5. Ép Tên sản phẩm luôn cao chuẩn 2 dòng, quá dài thì tự hiện 3 chấm (...) */
+        .search-results .product-name {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal !important;
+            line-height: 1.4;
+            min-height: 42px;
+            margin-bottom: auto; /* Thần chú đẩy Giá tiền xuống dưới cùng */
+        }
+
+        .search-results .product-price {
+            margin-top: 10px;
+        }
+
+        /* CSS PHÂN TRANG */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 40px; grid-column: 1 / -1; }
+        .page-btn { padding: 8px 14px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px; font-family: 'Inter', sans-serif; font-weight: 500;}
+        .page-btn.active { background: var(--primary-color); color: var(--white); border-color: var(--primary-color); }
+        .page-btn:hover:not(.active) { background: var(--light-bg); }
+        
+        #loading-text { text-align: center; grid-column: 1 / -1; padding: 50px; color: #888; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title">TÌM KIẾM & LỌC SẢN PHẨM</h1>
+        </div>
+    </div>
+
+    <main class="container search-page-container" style="display: flex; gap: 40px; margin-bottom: 60px;">
+        <aside class="filter-sidebar" style="width: 280px; flex-shrink: 0;">
+            <div class="filter-group" style="margin-bottom: 25px;">
+                <div class="filter-title" style="font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase;">Từ khóa</div>
+                <input type="text" id="filter-keyword" class="filter-input" placeholder="Nhập tên sản phẩm..." style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+            </div>
+
+            <div class="filter-group" style="margin-bottom: 25px;">
+                <div class="filter-title" style="font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase;">Danh mục</div>
+                <select id="filter-category" class="filter-select" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                    <option value="">-- Tất cả danh mục --</option>
+                </select>
+            </div>
+
+            <div class="filter-group" style="margin-bottom: 25px;">
+                <div class="filter-title" style="font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase;">Khoảng giá (VNĐ)</div>
+                <div class="price-inputs" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="number" id="filter-min-price" placeholder="TỪ" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                    <span>-</span>
+                    <input type="number" id="filter-max-price" placeholder="ĐẾN" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                </div>
+            </div>
+
+            <div class="filter-group" style="margin-bottom: 25px;">
+                <div class="filter-title" style="font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase;">Màu sắc</div>
+                <select id="filter-color" class="filter-select" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                    <option value="">-- Tất cả màu --</option>
+                    <option value="BLACK">Đen</option>
+                    <option value="WHITE">Trắng</option>
+                    <option value="RED">Đỏ</option>
+                    <option value="BLUE">Xanh dương</option>
+                    <option value="LIGHT_BLUE">Xanh nhạt</option>
+                    <option value="GRAY">Xám</option>
+                    <option value="YELLOW">Vàng</option>
+                    <option value="GREEN">Xanh lá</option>
+                </select>
+            </div>
+
+            <div class="filter-group" style="margin-bottom: 25px;">
+                <div class="filter-title" style="font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase;">Kích thước</div>
+                <select id="filter-size" class="filter-select" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                    <option value="">-- Tất cả size --</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="XXL">XXL</option>
+                </select>
+            </div>
+
+            <button class="filter-btn" onclick="executeSearch()" style="width: 100%; padding: 12px; background: var(--primary-color); color: var(--white); border: none; font-weight: 600; cursor: pointer; border-radius: 4px; text-transform: uppercase;">ÁP DỤNG LỌC</button>
+        </aside>
+
+        <section class="search-results" style="flex-grow: 1;">
+            <div class="search-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <h2 style="font-size: 20px; font-weight: 700; text-transform: uppercase; margin: 0;">KẾT QUẢ</h2>
+                <span class="result-count" id="result-count-label" style="font-size: 14px; color: #666;">Đang tải...</span>
+            </div>
+            
+            <div class="product-grid" id="search-product-grid"></div>
+            <div id="loading-text">Đang tải dữ liệu...</div>
+            
+            <div class="pagination" id="pagination-container"></div>
+        </section>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/common.js"></script>
+    
+    <script>
+        let globalCategories = []; 
+        let allFilteredProducts = []; 
+        let currentPage = 1;
+        const itemsPerPage = 9; 
+
+        function formatImageUrl(dbImage) {
+            if (!dbImage) return 'https://via.placeholder.com/500x666?text=No+Image';
+            if (!dbImage.includes('.')) dbImage += '.jpg';
+            if (dbImage.startsWith('http')) return dbImage;
+            let cleanPath = dbImage.replace('/uploads/', '').replace('uploads/', '');
+            return 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadCategoriesIntoFilter();
+            
+            // Tự động điền từ khóa từ URL (nếu khách bấm Search từ thanh Header)
+            const urlParams = new URLSearchParams(window.location.search);
+            const keyword = urlParams.get('keyword');
+            if(keyword) document.getElementById('filter-keyword').value = keyword;
+
+            // ========================================================
+            // TÍNH NĂNG MỚI: NHẤN ENTER ĐỂ TÌM KIẾM CHO PRO!
+            // ========================================================
+            const filterKeywordInput = document.getElementById('filter-keyword');
+            filterKeywordInput.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault(); // Chặn hành vi reload trang mặc định
+                    executeSearch();
+                }
+            });
+        });
+
+        function loadCategoriesIntoFilter() {
+            axios.get('http://localhost:8080/api/categories')
+                .then(response => {
+                    globalCategories = Array.isArray(response.data) ? response.data : (response.data.content || response.data.data || []);
+                    const selectEl = document.getElementById('filter-category');
+                    
+                    const roots = globalCategories.filter(c => !c.parentId);
+                    roots.forEach(root => {
+                        const rootId = root.categoryId || root.id;
+                        selectEl.innerHTML += `<option value="${rootId}" style="font-weight: 600;">${root.name}</option>`;
+                        renderChildOptions(rootId, 1, selectEl);
+                    });
+
+                    // Tự động tìm kiếm lần đầu khi vừa vào trang
+                    executeSearch();
+                })
+                .catch(err => console.error("Lỗi tải danh mục filter", err));
+        }
+
+        function renderChildOptions(parentId, level, selectEl) {
+            const children = globalCategories.filter(c => c.parentId === parentId);
+            const prefix = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(level) + '|_ ';
+            children.forEach(child => {
+                const childId = child.categoryId || child.id;
+                selectEl.innerHTML += `<option value="${childId}">${prefix}${child.name}</option>`;
+                renderChildOptions(childId, level + 1, selectEl);
+            });
+        }
+
+        function getAllDescendantIds(parentId) {
+            let ids = [parseInt(parentId)];
+            const children = globalCategories.filter(c => c.parentId === parseInt(parentId));
+            children.forEach(child => {
+                const childId = child.categoryId || child.id;
+                ids = ids.concat(getAllDescendantIds(childId));
+            });
+            return ids;
+        }
+
+        // ========================================================
+        // HÀM GỌI API: KHÔNG CẦN CẠO DẤU BẰNG JS VÌ BACKEND ĐÃ LO!
+        // ========================================================
+        function executeSearch() {
+            const keyword = document.getElementById('filter-keyword').value.trim();
+            const selectedCategoryId = document.getElementById('filter-category').value;
+            const minPrice = document.getElementById('filter-min-price').value;
+            const maxPrice = document.getElementById('filter-max-price').value;
+            const color = document.getElementById('filter-color').value;
+            const size = document.getElementById('filter-size').value;
+
+            document.getElementById('search-product-grid').innerHTML = '';
+            document.getElementById('pagination-container').innerHTML = '';
+            document.getElementById('loading-text').style.display = 'block';
+            
+            const searchParams = {};
+            // Keyword mang dấu hay không dấu ném thẳng lên Backend, nó tự gọt sạch!
+            if (keyword) searchParams.keyword = keyword;
+            if (minPrice) searchParams.minPrice = minPrice;
+            if (maxPrice) searchParams.maxPrice = maxPrice;
+            if (color) searchParams.colors = color;
+            if (size) searchParams.sizes = size;
+
+            axios.get('http://localhost:8080/api/clothes/search-and-filter', { params: searchParams })
+                .then(response => {
+                    document.getElementById('loading-text').style.display = 'none';
+                    let clothesList = Array.isArray(response.data) ? response.data : (response.data.content || response.data.data || []);
+                    
+                    if (selectedCategoryId) {
+                        const validCategoryIds = getAllDescendantIds(selectedCategoryId);
+                        clothesList = clothesList.filter(item => {
+                            const itemCatId = item.categoryId || (item.category && item.category.categoryId);
+                            return validCategoryIds.includes(parseInt(itemCatId));
+                        });
+                    }
+
+                    allFilteredProducts = clothesList;
+                    document.getElementById('result-count-label').innerText = `Tìm thấy ${clothesList.length} sản phẩm`;
+
+                    if (clothesList.length === 0) {
+                        document.getElementById('search-product-grid').innerHTML = '<p style="text-align: center; grid-column: 1/-1; padding: 50px; color: var(--red-sale);">Không có sản phẩm nào phù hợp với bộ lọc!</p>';
+                        return;
+                    }
+
+                    currentPage = 1;
+                    renderPage(currentPage);
+                })
+                .catch(err => {
+                    document.getElementById('loading-text').style.display = 'none';
+                    console.error("Lỗi API Search:", err);
+                    document.getElementById('search-product-grid').innerHTML = 
+                        '<p style="text-align:center; grid-column: 1/-1; color:var(--red-sale);">Lỗi kết nối API Tìm kiếm!</p>';
+                });
+        }
+
+        function renderPage(page) {
+            currentPage = page;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const productsToShow = allFilteredProducts.slice(startIndex, endIndex);
+
+            const productGrid = document.getElementById('search-product-grid');
+            let htmlContent = '';
+
+            productsToShow.forEach(item => {
+                const id = item.clothesId || item.id;
+                let price = (item.variants && item.variants.length > 0) ? item.variants[0].price : 0;
+                const priceVND = new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+                let imgUrl = (item.imageUrls && item.imageUrls.length > 0) ? formatImageUrl(item.imageUrls[0]) : 'https://via.placeholder.com/500x666?text=No+Image';
+
+                htmlContent += `
+                    <div class="product-card" onclick="window.location.href='detail.html?id=${id}'">
+                        <div class="product-img">
+                            <img src="${imgUrl}" alt="${item.name}" onerror="this.src='https://via.placeholder.com/500x666?text=No+Image'">
+                            <div class="add-cart-btn">CHỌN SIZE / MÀU</div>
+                        </div>
+                        <div class="product-info">
+                            <span class="product-name" title="${item.name}">${item.name}</span>
+                            <span class="product-price">${priceVND}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            productGrid.innerHTML = htmlContent;
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(allFilteredProducts.length / itemsPerPage);
+            const paginationContainer = document.getElementById('pagination-container');
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            let paginationHtml = '';
+            
+            if (currentPage > 1) {
+                paginationHtml += `<button class="page-btn" onclick="renderPage(${currentPage - 1})">Trang trước</button>`;
+            }
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    paginationHtml += `<button class="page-btn active">${i}</button>`;
+                } else {
+                    paginationHtml += `<button class="page-btn" onclick="renderPage(${i})">${i}</button>`;
+                }
+            }
+
+            if (currentPage < totalPages) {
+                paginationHtml += `<button class="page-btn" onclick="renderPage(${currentPage + 1})">Trang sau</button>`;
+            }
+
+            paginationContainer.innerHTML = paginationHtml;
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        }
+    </script>
+</body>
+</html>

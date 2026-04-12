@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết sản phẩm - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* CSS CHO PHÂN LOẠI ĐỘNG */
+        .disabled-variant {
+            opacity: 0.3;
+            cursor: pointer;
+        }
+        
+        .size-swatch {
+            padding: 8px 15px; border: 1px solid #ccc; cursor: pointer; 
+            display: inline-block; margin-right: 10px; font-weight: bold;
+            transition: 0.2s; user-select: none;
+        }
+        .size-swatch.active-size { background: #000 !important; color: #fff !important; border-color: #000 !important; }
+        .size-swatch.disabled-variant {
+            background: #f5f5f5 !important; color: #aaa !important; 
+            text-decoration: line-through; border-style: dashed !important;
+        }
+
+        .color-swatch {
+            display: inline-flex; align-items: center; justify-content: center; 
+            width: 40px; height: 40px; border-radius: 50%; border: 1px solid transparent; 
+            cursor: pointer; margin-right: 10px; transition: 0.2s;
+        }
+        .color-swatch.active-color { border: 2px solid #000 !important; }
+        .color-inner {
+            width: 30px; height: 30px; border-radius: 50%; position: relative;
+        }
+        /* Hiệu ứng gạch chéo đỏ cho màu hết hàng */
+        .color-swatch.disabled-variant .color-inner::after {
+            content: ''; position: absolute; top: 50%; left: -2px; right: -2px; 
+            height: 2px; background: red; transform: translateY(-50%) rotate(-45deg);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="container">
+        <div class="product-detail-container" id="detail-content">
+            <h2 style="text-align: center; padding: 100px 0;">Đang tải thông tin sản phẩm...</h2>
+        </div>
+
+        <div class="related-section" id="related-section" style="display: none; margin-top: 80px;">
+            <div class="section-header">
+                <h2 class="section-title">Cùng Danh Mục</h2>
+            </div>
+            <div class="product-grid" id="related-grid"></div>
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/common.js"></script>
+    
+    <script>
+        // --- BIẾN TOÀN CỤC CHO THUẬT TOÁN LỌC ---
+        let globalVariants = [];
+        let selectedColor = null;
+        let selectedSize = null;
+
+        function getHexColor(colorName) {
+            if (!colorName) return '#cccccc';
+            const nameStr = colorName.toString().trim().toUpperCase();
+            const colorMap = {
+                'BLACK': '#000000', 'WHITE': '#FFFFFF', 'RED': '#FF0000', 
+                'BLUE': '#0000FF', 'GREEN': '#008000', 'YELLOW': '#FFFF00', 
+                'GRAY': '#808080', 'LIGHT_BLUE': '#ADD8E6'
+            };
+            return colorMap[nameStr] || '#cccccc';
+        }
+
+        function formatImageUrl(dbImage) {
+            if (!dbImage) return 'https://via.placeholder.com/500x750?text=No+Image';
+            if (!dbImage.includes('.')) dbImage += '.jpg';
+            if (dbImage.startsWith('http')) return dbImage;
+            let cleanPath = dbImage.replace('/uploads/', '').replace('uploads/', '');
+            return 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+            if (productId) fetchProductDetail(productId);
+        });
+
+        function fetchProductDetail(id) {
+            axios.get(`http://localhost:8080/api/clothes/${id}`)
+                .then(response => {
+                    const product = response.data;
+                    globalVariants = product.variants || [];
+                    
+                    let price = 0;
+                    let totalStock = 0;
+                    if (globalVariants.length > 0) {
+                        price = globalVariants[0].price; 
+                        totalStock = globalVariants.reduce((sum, v) => sum + v.stockQuantity, 0);
+                    }
+                    const priceVND = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+                    
+                    const safeId = product.clothesId || product.id || id;
+                    const sku = "SP-" + safeId.toString().padStart(4, '0');
+
+                    let mainImgUrl = 'https://via.placeholder.com/500x750?text=No+Image';
+                    let thumbnailsHtml = '';
+                    if (product.imageUrls && product.imageUrls.length > 0) {
+                        mainImgUrl = formatImageUrl(product.imageUrls[0]);
+                        product.imageUrls.forEach((img, index) => {
+                            let imgFmt = formatImageUrl(img);
+                            let activeClass = index === 0 ? 'border: 2px solid black;' : 'border: 1px solid #ccc;';
+                            thumbnailsHtml += `<img src="${imgFmt}" style="width: 80px; height: 100px; object-fit: cover; cursor: pointer; margin-bottom: 10px; ${activeClass}" class="thumbnail-img" onclick="changeMainImage(this, '${imgFmt}')">`;
+                        });
+                    }
+
+                    // Lọc mảng màu/size độc nhất (kể cả hết hàng để hiển thị ban đầu)
+                    let uniqueColors = [...new Set(globalVariants.map(v => v.color).filter(c => c))];
+                    let uniqueSizes = [...new Set(globalVariants.map(v => v.size).filter(s => s))];
+
+                    let colorsHtml = '';
+                    uniqueColors.forEach(c => {
+                        let bgHex = getHexColor(c);
+                        let innerBorder = bgHex === '#FFFFFF' ? '1px solid #ddd' : 'none';
+                        colorsHtml += `
+                            <div class="color-swatch" data-color="${c}" title="${c}" onclick="handleColorClick('${c}')">
+                                <div class="color-inner" style="background-color: ${bgHex}; border: ${innerBorder};"></div>
+                            </div>
+                        `;
+                    });
+
+                    let sizesHtml = '';
+                    uniqueSizes.forEach(s => {
+                        sizesHtml += `<div class="size-swatch" data-size="${s}" onclick="handleSizeClick('${s}')">${s}</div>`;
+                    });
+
+                    document.getElementById('detail-content').innerHTML = `
+                        <div style="display: flex; gap: 50px; margin-top: 40px;">
+                            <div style="display: flex; gap: 20px; width: 50%;">
+                                <div style="display: flex; flex-direction: column;">${thumbnailsHtml}</div>
+                                <div style="flex-grow: 1;">
+                                    <img src="${mainImgUrl}" id="main-image-display" style="width: 100%; aspect-ratio: 3/4; object-fit: cover;" alt="${product.name}">
+                                </div>
+                            </div>
+
+                            <div style="width: 50%;">
+                                <h1 style="font-size: 28px; margin-bottom: 15px;">${product.name}</h1>
+                                <div style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                                    <span>Mã SP: <b>${sku}</b></span> &nbsp;|&nbsp; 
+                                    <span id="variant-stock-label"></span>
+                                </div>
+                                <div id="variant-price-label" style="font-size: 24px; font-weight: bold; color: #c0392b; margin-bottom: 30px;">${priceVND}</div>
+                                
+                                <p style="line-height: 1.6; margin-bottom: 30px;">${product.description || "Chưa có mô tả chi tiết."}</p>
+
+                                ${uniqueColors.length > 0 ? `
+                                <div style="margin-bottom: 25px;">
+                                    <div style="font-weight: bold; margin-bottom: 10px;">MÀU SẮC <span id="color-name-label" style="font-weight: normal; color: #666; margin-left: 10px;"></span></div>
+                                    <div style="display: flex; align-items: center;">${colorsHtml}</div>
+                                </div>` : ''}
+
+                                ${uniqueSizes.length > 0 ? `
+                                <div style="margin-bottom: 30px;">
+                                    <div style="font-weight: bold; margin-bottom: 10px;">KÍCH THƯỚC</div>
+                                    <div>${sizesHtml}</div>
+                                </div>` : ''}
+
+                                <div style="display: flex; gap: 15px; align-items: center;">
+                                    <div style="display: flex; border: 1px solid #ccc; height: 50px;">
+                                        <button style="width: 40px; background: none; border: none; font-size: 20px; cursor: pointer;" onclick="changeQty(-1)">-</button>
+                                        <input type="text" id="buy-qty" value="1" readonly style="width: 50px; text-align: center; border: none; font-size: 16px; font-weight: bold;">
+                                        <button style="width: 40px; background: none; border: none; font-size: 20px; cursor: pointer;" onclick="changeQty(1)">+</button>
+                                    </div>
+                                    
+                                    <button onclick="addToCartReal(${safeId}, '${product.name.replace(/'/g, "\\'")}', '${mainImgUrl}', false)" 
+                                            style="background: #fff; color: #000; border: 1px solid #000; height: 50px; padding: 0 20px; font-weight: bold; cursor: pointer; font-size: 15px; flex-grow: 1; transition: 0.3s;"
+                                            onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='#fff'">
+                                        THÊM VÀO GIỎ
+                                    </button>
+
+                                    <button onclick="addToCartReal(${safeId}, '${product.name.replace(/'/g, "\\'")}', '${mainImgUrl}', true)" 
+                                            style="background: #000; color: #fff; border: 1px solid #000; height: 50px; padding: 0 20px; font-weight: bold; cursor: pointer; font-size: 15px; flex-grow: 1; transition: 0.3s;"
+                                            onmouseover="this.style.background='#333'" onmouseout="this.style.background='#000'">
+                                        MUA NGAY
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Khởi chạy thuật toán quét tồn kho lần đầu tiên
+                    updateVariantState();
+
+                    let catName = (product.category && product.category.name) ? product.category.name : product.categoryName;
+                    fetchRelatedProducts(catName, safeId);
+                });
+        }
+
+        // ================== THUẬT TOÁN LỌC CHÉO ==================
+
+        function handleColorClick(c) {
+            if (selectedColor === c) {
+                selectedColor = null; // Bấm lại thì hủy chọn
+            } else {
+                selectedColor = c;
+                // Nếu size hiện tại không khớp với màu mới, tự động hủy size
+                let isCompatible = globalVariants.some(v => v.color === selectedColor && v.size === selectedSize && v.stockQuantity > 0);
+                if (!isCompatible) selectedSize = null; 
+            }
+            updateVariantState();
+        }
+
+        function handleSizeClick(s) {
+            if (selectedSize === s) {
+                selectedSize = null; // Bấm lại thì hủy chọn
+            } else {
+                selectedSize = s;
+                // Nếu màu hiện tại không khớp với size mới, tự động hủy màu
+                let isCompatible = globalVariants.some(v => v.size === selectedSize && v.color === selectedColor && v.stockQuantity > 0);
+                if (!isCompatible) selectedColor = null;
+            }
+            updateVariantState();
+        }
+
+        function updateVariantState() {
+            const colorNodes = document.querySelectorAll('.color-swatch');
+            const sizeNodes = document.querySelectorAll('.size-swatch');
+
+            // 1. Quét điều kiện cho Size dựa trên Màu đang chọn
+            sizeNodes.forEach(node => {
+                const s = node.getAttribute('data-size');
+                let isAvailable = selectedColor 
+                    ? globalVariants.some(v => v.color === selectedColor && v.size === s && v.stockQuantity > 0)
+                    : globalVariants.some(v => v.size === s && v.stockQuantity > 0);
+                
+                if (!isAvailable) {
+                    node.classList.add('disabled-variant');
+                    node.classList.remove('active-size');
+                } else {
+                    node.classList.remove('disabled-variant');
+                    if (s === selectedSize) node.classList.add('active-size');
+                    else node.classList.remove('active-size');
+                }
+            });
+
+            // 2. Quét điều kiện cho Màu dựa trên Size đang chọn
+            colorNodes.forEach(node => {
+                const c = node.getAttribute('data-color');
+                let isAvailable = selectedSize
+                    ? globalVariants.some(v => v.size === selectedSize && v.color === c && v.stockQuantity > 0)
+                    : globalVariants.some(v => v.color === c && v.stockQuantity > 0);
+
+                if (!isAvailable) {
+                    node.classList.add('disabled-variant');
+                    node.classList.remove('active-color');
+                } else {
+                    node.classList.remove('disabled-variant');
+                    if (c === selectedColor) node.classList.add('active-color');
+                    else node.classList.remove('active-color');
+                }
+            });
+
+            // 3. Cập nhật Nhãn màu, Giá tiền và Tồn kho
+            const stockLabel = document.getElementById('variant-stock-label');
+            const priceLabel = document.getElementById('variant-price-label');
+            const colorLabel = document.getElementById('color-name-label');
+            
+            if (colorLabel) colorLabel.innerText = selectedColor ? `(${selectedColor})` : '';
+
+            if (selectedColor && selectedSize) {
+                const exactV = globalVariants.find(v => v.color === selectedColor && v.size === selectedSize);
+                if (exactV) {
+                    stockLabel.innerHTML = `<span style="color: green; font-weight: bold;">Tình trạng: Còn hàng (${exactV.stockQuantity} sẵn có)</span>`;
+                    priceLabel.innerText = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(exactV.price);
+                    
+                    // Ép lại số lượng mua nếu lớn hơn tồn kho thực tế
+                    let qtyInput = document.getElementById('buy-qty');
+                    if(parseInt(qtyInput.value) > exactV.stockQuantity) qtyInput.value = 1;
+                }
+            } else {
+                const totalStock = globalVariants.reduce((sum, v) => sum + v.stockQuantity, 0);
+                stockLabel.innerHTML = totalStock > 0 
+                    ? `<span style="color: green; font-weight: bold;">Tình trạng: Còn hàng (Tổng ${totalStock})</span>` 
+                    : `<span style="color: red; font-weight: bold;">Tình trạng: Hết hàng</span>`;
+            }
+        }
+
+        //CÁC HÀM CƠ BẢN CÒN LẠI
+
+        function changeMainImage(element, imgUrl) {
+            document.getElementById('main-image-display').src = imgUrl;
+            document.querySelectorAll('.thumbnail-img').forEach(el => el.style.border = '1px solid #ccc');
+            element.style.border = '2px solid black';
+        }
+
+        function changeQty(amount) {
+            let input = document.getElementById('buy-qty');
+            let newVal = parseInt(input.value) + amount;
+            
+            // Giới hạn không cho bấm quá tồn kho nếu đã chọn đủ Màu & Size
+            if (selectedColor && selectedSize) {
+                const exactV = globalVariants.find(v => v.color === selectedColor && v.size === selectedSize);
+                if (exactV && newVal > exactV.stockQuantity) {
+                     showNotification("Số lượng bạn chọn vượt quá tồn kho hiện tại!");
+                    return;
+                }
+            }
+            if (newVal >= 1) input.value = newVal;
+        }
+
+        function addToCartReal(id, name, image, isBuyNow) {
+            // RÀO CHẮN: Ép khách phải chọn đủ cả Màu và Size mới cho add giỏ hàng
+            if (!selectedColor || !selectedSize) {
+                showNotification("Bạn vui lòng chọn đầy đủ MÀU SẮC và KÍCH THƯỚC trước nhé!");
+                return;
+            }
+
+            let qty = parseInt(document.getElementById('buy-qty').value);
+            let exactVariant = globalVariants.find(v => v.color === selectedColor && v.size === selectedSize);
+            
+            if (!exactVariant || exactVariant.stockQuantity < qty) {
+                showNotification("Rất tiếc, kho không đủ số lượng bạn yêu cầu!");
+                return;
+            }
+
+            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            let existingItem = cart.find(item => item.id === id && item.color === selectedColor && item.size === selectedSize);
+
+            if (existingItem) existingItem.qty += qty; 
+            else cart.push({ id, name, price: exactVariant.price, image, color: selectedColor, size: selectedSize, qty });
+
+            localStorage.setItem('my_cart', JSON.stringify(cart));
+            
+            if (isBuyNow) window.location.href = 'cart.html';
+            else {
+                if(typeof showNotification === 'function') showNotification("Đã thêm sản phẩm vào giỏ hàng!");
+                else  showNotification("Thành công! Đã thêm vào giỏ hàng.");
+            }
+        }
+
+        function fetchRelatedProducts(categoryName, currentProductId) {
+            axios.get('http://localhost:8080/api/clothes?size=1000')
+                .then(response => {
+                    const allClothes = Array.isArray(response.data) ? response.data : (response.data.content || response.data.data || []);
+                    let related = allClothes.filter(p => {
+                        let pCatName = (p.category && p.category.name) ? p.category.name : p.categoryName;
+                        let pId = p.clothesId || p.id;
+                        return pCatName === categoryName && pId != currentProductId;
+                    });
+
+                    if (related.length > 0) {
+                        document.getElementById('related-section').style.display = 'block';
+                        let htmlContent = '';
+                        related.slice(0, 4).forEach(item => {
+                            let price = (item.variants && item.variants.length > 0) ? item.variants[0].price : 0;
+                            const priceVND = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+                            let imgUrl = (item.imageUrls && item.imageUrls.length > 0) ? formatImageUrl(item.imageUrls[0]) : 'https://via.placeholder.com/500x750?text=No+Image';
+                            let id = item.clothesId || item.id;
+
+                            htmlContent += `
+                                <div class="product-card">
+                                    <div class="product-img">
+                                        <a href="detail.html?id=${id}"><img src="${imgUrl}" alt="${item.name}"></a>
+                                    </div>
+                                    <div class="product-info">
+                                        <a href="detail.html?id=${id}" class="product-name">${item.name}</a>
+                                        <span class="product-price">${priceVND}</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById('related-grid').innerHTML = htmlContent;
+                    }
+                });
+        }
+    </script>
+</body>
+</html>

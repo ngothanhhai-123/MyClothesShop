@@ -1,0 +1,37 @@
+<div class="top-bar">
+    MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC - ĐỔI TRẢ TRONG 30 NGÀY
+</div>
+<header>
+    <div class="container header-inner">
+        <a href="index.html" class="logo">MyClothes<span class="text-accent">Shop</span>.</a>
+        
+        <ul class="nav-menu" id="dynamic-nav-menu">
+            <li><a href="index.html" class="nav-link">Trang Chủ</a></li>
+            <li>
+                <a href="category.html?type=hot" class="nav-link" style="color: #e74c3c; font-weight: 800;">
+                    Sản Phẩm HOT 
+                </a>
+            </li>
+            <li><a href="category.html" class="nav-link">Tất Cả Sản Phẩm</a></li>
+        </ul>
+        
+        <div class="header-icons">
+            <div class="search-box" style="display: flex; align-items: center; border: 1px solid #ccc; padding: 5px 15px; border-radius: 20px;">
+    
+                <input type="text" id="header-search-input" placeholder="Tìm kiếm..." style="border: none; outline: none; padding: 5px;" onkeypress="handleHeaderSearch(event)">
+                
+                <i class="fa-solid fa-magnifying-glass" style="cursor: pointer; color: #666;" onclick="executeHeaderSearch()"></i>
+            
+            </div>
+            <a href="profile.html" class="header-icon-btn" title="Tài khoản của tôi">
+                <i class="fa-regular fa-user"></i>
+            </a>
+            <a href="cart.html" style="color: inherit;">
+                <div class="cart-box">
+                    <i class="fa-solid fa-bag-shopping" title="Giỏ hàng"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</header>

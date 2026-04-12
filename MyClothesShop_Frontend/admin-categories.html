@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Danh mục - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css"> 
+    <style>
+        .cat-id { font-weight: 700; color: #888; width: 80px; }
+        .cat-name { font-weight: 600; color: #111; }
+        .action-btns { display: flex; gap: 15px; }
+        .btn-edit { color: #2563eb; cursor: pointer; transition: 0.2s; }
+        .btn-delete { color: #dc2626; cursor: pointer; transition: 0.2s; }
+        .btn-edit:hover, .btn-delete:hover { transform: scale(1.2); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: #fff; width: 450px; border-radius: 12px; overflow: hidden; animation: slideDown 0.3s ease; }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 25px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; font-family: 'Inter'; }
+        .form-group input:focus, .form-group select:focus { border-color: #2563eb; }
+        
+        .badge-root { background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .badge-child { background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        
+        .badge-count { background: #10b981; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+        
+        /* CSS MỚI CHO NÚT FILTER VÀ POPUP SẮP XẾP */
+        .sort-dropdown-container { position: relative; display: inline-block; margin-left: 8px; }
+        .btn-filter { background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; color: #555; transition: 0.2s; padding: 4px 8px; font-size: 12px; }
+        .btn-filter:hover { background: #e5e7eb; color: #111; }
+        .sort-dropdown { position: absolute; top: 120%; right: 0; background: white; border: 1px solid #ddd; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; width: 160px; z-index: 10; display: none; flex-direction: column; overflow: hidden; }
+        .sort-dropdown.show { display: flex; }
+        .sort-option { padding: 10px 15px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 1px solid #eee; transition: 0.2s; color: #333; text-align: left; }
+        .sort-option:last-child { border-bottom: none; }
+        .sort-option:hover { background: #f3f4f6; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">MY<span>CLOTHES</span></div>
+        <ul class="sidebar-menu">
+            <li><a href="admin-dashboard.html"><i class="fa-solid fa-house"></i> Tổng quan</a></li>
+            <li><a href="admin-categories.html" class="active"><i class="fa-solid fa-layer-group"></i> Danh mục</a></li>
+            <li><a href="admin-products.html"><i class="fa-solid fa-shirt"></i> Sản phẩm</a></li>
+            <li><a href="admin-orders.html"><i class="fa-solid fa-file-invoice-dollar"></i> Đơn hàng</a></li>
+            <li><a href="admin-users.html"><i class="fa-solid fa-users"></i> Khách hàng</a></li>
+        </ul>
+        <div class="admin-info" onclick="logoutAdmin()">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=444&color=fff" class="avatar">
+            <div class="details">
+                <div class="name">Super Admin</div>
+                <div class="role">Đăng xuất <i class="fa-solid fa-sign-out-alt"></i></div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <h2>Quản lý Danh mục sản phẩm</h2>
+            <button class="btn-primary" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> Thêm danh mục mới</button>
+        </header>
+
+        <section class="content-body">
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã ID</th>
+                            <th>Tên danh mục</th>
+                            <th>Cấp độ</th>
+                            <th>
+                                Số lượng SP
+                                <div class="sort-dropdown-container">
+                                    <button class="btn-filter" onclick="toggleSortPopup(event)">
+                                        <i class="fa-solid fa-filter"></i> Lọc
+                                    </button>
+                                    <div class="sort-dropdown" id="sort-popup">
+                                        <div class="sort-option" onclick="applySort('none', event)">Mặc định (ID)</div>
+                                        <div class="sort-option" onclick="applySort('desc', event)"><i class="fa-solid fa-arrow-down-9-1"></i> Nhiều SP nhất</div>
+                                        <div class="sort-option" onclick="applySort('asc', event)"><i class="fa-solid fa-arrow-up-1-9"></i> Ít SP nhất</div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="category-table-body">
+                        <tr><td colspan="5" align="center">Đang tải dữ liệu...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-overlay" id="category-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Thêm Danh Mục</h3>
+                <i class="fa-solid fa-xmark" style="cursor:pointer" onclick="closeModal()"></i>
+            </div>
+            <div class="modal-body">
+                <form id="category-form" onsubmit="saveCategory(event)">
+                    <input type="hidden" id="cat-id">
+                    <div class="form-group">
+                        <label>Tên danh mục</label>
+                        <input type="text" id="cat-name" placeholder="Ví dụ: Áo Sơ Mi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Danh mục cha (Để trống nếu là gốc)</label>
+                        <select id="cat-parent">
+                            <option value="">-- Không có (Danh mục gốc) --</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%; padding: 15px;">LƯU DANH MỤC</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const token = localStorage.getItem('jwt_token');
+        let globalCategories = []; 
+        let sortOrder = 'none'; // 'none', 'desc', 'asc'
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (!token) { window.location.href = "login.html"; return; }
+            loadCategoriesAndCount();
+        });
+
+        // 1. GỌI KÉP API & TÍNH TỔNG (CHA = CHA + CON)
+        function loadCategoriesAndCount() {
+            Promise.all([
+                axios.get('http://localhost:8080/api/categories'),
+                axios.get('http://localhost:8080/api/clothes?size=1000') 
+            ])
+            .then(responses => {
+                const cats = responses[0].data || [];
+                const clothes = Array.isArray(responses[1].data) ? responses[1].data : (responses[1].data.content || responses[1].data.data || []);
+
+                // B1: Reset đếm trực tiếp của mỗi category
+                cats.forEach(c => c.productCount = 0);
+
+                // B2: Đếm số lượng sản phẩm gắn trực tiếp vào category đó
+                clothes.forEach(item => {
+                    let cId = item.categoryId || (item.category ? item.category.categoryId : null);
+                    if (cId) {
+                        let cat = cats.find(c => (c.categoryId || c.id) == cId);
+                        if (cat) cat.productCount += 1;
+                    }
+                });
+
+                // B3: Đệ quy tính tổng (Cha = của Cha + của các Con)
+                function calcTotal(cat) {
+                    let catId = cat.categoryId || cat.id;
+                    let total = cat.productCount;
+                    let children = cats.filter(c => c.parentId == catId);
+                    children.forEach(child => {
+                        total += calcTotal(child);
+                    });
+                    cat.totalProductCount = total;
+                    return total;
+                }
+
+                // Chạy đệ quy tính từ các danh mục gốc trở xuống
+                let roots = cats.filter(c => !c.parentId);
+                roots.forEach(r => calcTotal(r));
+                
+                // Backup nhỡ có danh mục nào chưa tính
+                cats.forEach(c => { if(c.totalProductCount === undefined) calcTotal(c); });
+
+                globalCategories = cats;
+                renderCategoryTable();
+            })
+            .catch(err => {
+                console.error("Lỗi tải dữ liệu:", err);
+                document.getElementById('category-table-body').innerHTML = '<tr><td colspan="5" align="center" style="color:red;">Lỗi tải dữ liệu</td></tr>';
+            });
+        }
+
+        // 2. LOGIC MỞ/ĐÓNG POPUP FILTER
+        function toggleSortPopup(e) {
+            e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài
+            document.getElementById('sort-popup').classList.toggle('show');
+        }
+
+        // Bấm ra ngoài thì đóng popup
+        window.onclick = function(event) {
+            if (!event.target.matches('.btn-filter') && !event.target.matches('.fa-filter')) {
+                let dropdowns = document.getElementsByClassName("sort-dropdown");
+                for (let i = 0; i < dropdowns.length; i++) {
+                    if (dropdowns[i].classList.contains('show')) {
+                        dropdowns[i].classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        // 3. ÁP DỤNG SORT
+        function applySort(order, e) {
+            e.stopPropagation(); // Giữ cho popup tự đóng qua window.onclick hoặc đóng tay
+            sortOrder = order;
+            document.getElementById('sort-popup').classList.remove('show');
+            renderCategoryTable();
+        }
+
+        // 4. VẼ BẢNG
+        function renderCategoryTable() {
+            const tbody = document.getElementById('category-table-body');
+            if (globalCategories.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" align="center">Chưa có danh mục nào.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            let roots = globalCategories.filter(c => !c.parentId);
+            
+            // Xếp các Danh mục Gốc với nhau dựa theo tổng SP (totalProductCount)
+            if (sortOrder === 'desc') roots.sort((a, b) => b.totalProductCount - a.totalProductCount);
+            if (sortOrder === 'asc') roots.sort((a, b) => a.totalProductCount - b.totalProductCount);
+            
+            roots.forEach(root => {
+                html += generateRowHtml(root, 0);
+                html += renderChildren(root.categoryId, 1);
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderChildren(parentId, level) {
+            let html = '';
+            let children = globalCategories.filter(c => c.parentId === parentId);
+            
+            // Xếp các Danh mục Con cùng cấp với nhau dựa theo tổng SP
+            if (sortOrder === 'desc') children.sort((a, b) => b.totalProductCount - a.totalProductCount);
+            if (sortOrder === 'asc') children.sort((a, b) => a.totalProductCount - b.totalProductCount);
+
+            children.forEach(child => {
+                html += generateRowHtml(child, level);
+                html += renderChildren(child.categoryId, level + 1); 
+            });
+            return html;
+        }
+
+        function generateRowHtml(c, level) {
+            const indent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(level);
+            const prefix = level > 0 ? '|_ ' : '';
+            const badge = level === 0 ? '<span class="badge-root">Danh mục gốc</span>' : '<span class="badge-child">Danh mục con</span>';
+            const safeName = c.name.replace(/'/g, "\\'");
+
+            return `
+                <tr>
+                    <td class="cat-id">#${c.categoryId}</td>
+                    <td>
+                        <span style="font-weight: ${level === 0 ? '700' : '500'}; color: ${level === 0 ? '#111' : '#555'}">
+                            ${indent}${prefix}${c.name}
+                        </span>
+                    </td>
+                    <td>${badge}</td>
+                    <td><span class="badge-count">${c.totalProductCount} SP</span></td>
+                    <td align="right">
+                        <div class="action-btns" style="justify-content: flex-end;">
+                            <i class="fa-solid fa-pen-to-square btn-edit" onclick="openEditModal(${c.categoryId}, '${safeName}', ${c.parentId || null})"></i>
+                            <i class="fa-solid fa-trash btn-delete" onclick="deleteCategory(${c.categoryId})"></i>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // 5. CÁC HÀM XỬ LÝ MODAL, API (THÊM, SỬA, XÓA)
+        function populateParentDropdown(excludeId = null) {
+            const select = document.getElementById('cat-parent');
+            let options = '<option value="">-- Không có (Danh mục gốc) --</option>';
+            globalCategories.forEach(c => {
+                if (c.categoryId !== excludeId) options += `<option value="${c.categoryId}">${c.name}</option>`;
+            });
+            select.innerHTML = options;
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').innerText = "Thêm Danh Mục Mới";
+            document.getElementById('cat-id').value = "";
+            document.getElementById('cat-name').value = "";
+            populateParentDropdown(null);
+            document.getElementById('category-modal').style.display = 'flex';
+        }
+
+        function openEditModal(id, name, parentId) {
+            document.getElementById('modal-title').innerText = "Chỉnh Sửa Danh Mục";
+            document.getElementById('cat-id').value = id;
+            document.getElementById('cat-name').value = name;
+            populateParentDropdown(id); 
+            document.getElementById('cat-parent').value = parentId || "";
+            document.getElementById('category-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('category-modal').style.display = 'none'; }
+
+        function saveCategory(event) {
+            event.preventDefault();
+            const id = document.getElementById('cat-id').value;
+            const name = document.getElementById('cat-name').value.trim();
+            const parentId = document.getElementById('cat-parent').value;
+            const payload = { name: name, parentId: parentId ? parseInt(parentId) : null };
+
+            if (id) {
+                axios.put(`http://localhost:8080/api/categories/admin/update/${id}`, payload, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(() => { if (typeof showNotification === 'function') showNotification("Cập nhật thành công!"); closeModal(); loadCategoriesAndCount(); })
+                .catch(err => { showNotification("Lỗi: " + (err.response?.data?.message || "Không thể cập nhật"), false); });
+            } else {
+                axios.post('http://localhost:8080/api/categories/admin/add', payload, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(() => { if (typeof showNotification === 'function') showNotification("Thêm danh mục thành công!"); closeModal(); loadCategoriesAndCount(); })
+                .catch(err => { showNotification("Lỗi: " + (err.response?.data?.message || "Không thể thêm"), false); });
+            }
+        }
+
+        function deleteCategory(id) {
+            if (confirm("Lưu ý: Nếu xóa danh mục gốc, các danh mục con bên trong có thể bị xóa theo. Bạn chắc chắn chứ?")) {
+                axios.delete(`http://localhost:8080/api/categories/admin/delete/${id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(() => { if (typeof showNotification === 'function') showNotification("Đã xóa danh mục!"); loadCategoriesAndCount(); })
+                .catch(err => { showNotification("Lỗi: Danh mục này đang chứa sản phẩm, không thể xóa!", false); });
+            }
+        }
+
+        function logoutAdmin() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+    </script>
+</body>
+</html>

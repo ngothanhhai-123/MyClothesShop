@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giỏ hàng - MyClothesShop</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* CSS Giao diện Giỏ hàng chuẩn */
+        .cart-container { padding: 40px 0; min-height: 60vh; }
+        .cart-title { font-size: 24px; font-weight: 700; text-transform: uppercase; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; display: inline-block; }
+        
+        .cart-layout { display: flex; gap: 40px; align-items: flex-start; }
+        
+        .cart-table-wrapper { flex: 3; }
+        .cart-table { width: 100%; border-collapse: collapse; }
+        .cart-table th { text-align: left; padding: 15px; background-color: #f9f9f9; font-weight: 600; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #ddd; }
+        .cart-table td { padding: 20px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        
+        .cart-item-info { display: flex; gap: 20px; align-items: center; }
+        .cart-item-img { width: 80px; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
+        .cart-item-details .item-name { font-weight: 600; font-size: 16px; margin-bottom: 5px; color: #333; }
+        .cart-item-details .item-meta { font-size: 13px; color: #666; margin-bottom: 5px; }
+        
+        .qty-control { display: flex; align-items: center; border: 1px solid #ddd; width: fit-content; border-radius: 4px; overflow: hidden; }
+        .qty-btn { background: #f9f9f9; border: none; padding: 8px 12px; cursor: pointer; transition: 0.3s; }
+        .qty-btn:hover { background: #eee; }
+        .qty-input { width: 40px; text-align: center; border: none; border-left: 1px solid #ddd; border-right: 1px solid #ddd; font-weight: 500; outline: none; }
+        
+        .item-total-price { font-weight: 700; color: var(--red-sale); font-size: 16px; }
+        .btn-remove { color: #999; cursor: pointer; background: none; border: none; font-size: 18px; transition: 0.3s; }
+        .btn-remove:hover { color: red; }
+
+        .cart-summary { flex: 1; background: #f9f9f9; padding: 30px; border-radius: 8px; border: 1px solid #eee; position: sticky; top: 100px; }
+        .cart-summary h3 { font-size: 18px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 15px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 15px; color: #555; }
+        .summary-total { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 18px; font-weight: 700; color: #000; }
+        .summary-total .total-val { color: var(--red-sale); font-size: 22px; }
+        
+        .btn-checkout { display: block; width: 100%; padding: 16px; background: #000; color: #fff; text-align: center; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 4px; margin-top: 25px; transition: 0.3s; cursor: pointer; border: none; text-transform: uppercase; }
+        .btn-checkout:hover { background: #333; }
+        
+        .empty-cart-msg { text-align: center; padding: 60px 20px; background: #f9f9f9; border-radius: 8px; }
+        .empty-cart-msg i { font-size: 50px; color: #ddd; margin-bottom: 20px; }
+        .empty-cart-msg p { font-size: 16px; color: #666; margin-bottom: 20px; }
+        .btn-continue { display: inline-block; padding: 12px 30px; background: #000; color: #fff; text-decoration: none; border-radius: 4px; font-weight: 500; }
+
+        @media (max-width: 992px) { .cart-layout { flex-direction: column; } .cart-table-wrapper, .cart-summary { width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div id="header-placeholder"></div>
+
+    <main class="container cart-container">
+        <h1 class="cart-title">Giỏ hàng của bạn</h1>
+        <div id="cart-content-wrapper">
+            </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <script src="js/common.js"></script>
+    <script>
+        
+
+        // --- 2. XỬ LÝ DỮ LIỆU GIỎ HÀNG TỪ LOCALSTORAGE ---
+        document.addEventListener("DOMContentLoaded", renderCart);
+
+        function renderCart() {
+            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            let container = document.getElementById('cart-content-wrapper');
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-cart-msg">
+                        <i class="fa-solid fa-cart-arrow-down"></i>
+                        <p>Giỏ hàng của bạn hiện đang trống.</p>
+                        <a href="index.html" class="btn-continue">Tiếp tục mua sắm</a>
+                    </div>
+                `;
+                return;
+            }
+
+            let tableHtml = `
+                <div class="cart-layout">
+                    <div class="cart-table-wrapper">
+                        <table class="cart-table">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Đơn giá</th>
+                                    <th>Số lượng</th>
+                                    <th>Thành tiền</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            let subtotal = 0;
+
+            cart.forEach((item, index) => {
+                let itemTotal = item.price * item.qty;
+                subtotal += itemTotal;
+                
+                let priceFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price);
+                let totalFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(itemTotal);
+
+                tableHtml += `
+                    <tr>
+                        <td>
+                            <div class="cart-item-info">
+                                <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                                <div class="cart-item-details">
+                                    <div class="item-name">${item.name}</div>
+                                    <div class="item-meta">Màu sắc: <b>${item.color}</b></div>
+                                    <div class="item-meta">Kích thước: <b>${item.size}</b></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="font-weight: 500;">${priceFmt}</td>
+                        <td>
+                            <div class="qty-control">
+                                <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                                <input type="text" class="qty-input" value="${item.qty}" readonly>
+                                <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+                            </div>
+                        </td>
+                        <td class="item-total-price">${totalFmt}</td>
+                        <td>
+                            <button class="btn-remove" onclick="removeItem(${index})" title="Xóa sản phẩm">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+
+            let finalTotal = subtotal;
+            let summaryHtml = `
+                <div class="cart-summary">
+                    <h3>Tóm tắt đơn hàng</h3>
+                    <div class="summary-row">
+                        <span>Tạm tính:</span>
+                        <span>${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(subtotal)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Phí giao hàng:</span>
+                        <span style="color: green; font-weight: bold;">0 ₫ (Miễn phí)</span>
+                    </div>
+                    <div class="summary-total">
+                        <span>Tổng cộng:</span>
+                        <span class="total-val">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(finalTotal)}</span>
+                    </div>
+                    <a href="checkout.html" class="btn-checkout">Tiến hành đặt hàng</a>
+                </div>
+                </div> `;
+
+            container.innerHTML = tableHtml + summaryHtml;
+            updateCartCount();
+        }
+
+        // --- 3. HÀM TĂNG GIẢM SỐ LƯỢNG & XÓA ---
+        function updateQty(index, change) {
+            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            let newQty = cart[index].qty + change;
+            
+            if (newQty >= 1) {
+                cart[index].qty = newQty;
+                localStorage.setItem('my_cart', JSON.stringify(cart));
+                renderCart();
+            }
+        }
+
+        function removeItem(index) {
+            if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) {
+                let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+                cart.splice(index, 1);
+                localStorage.setItem('my_cart', JSON.stringify(cart));
+                renderCart();
+            }
+        }
+
+        function updateCartCount() {
+            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            let totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+            let cartCountEl = document.querySelector('.cart-count');
+            if(cartCountEl) cartCountEl.innerText = totalItems;
+        }
+    </script>
+</body>
+</html>
