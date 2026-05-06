@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -43,18 +44,22 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
     List<Order> findAllByOrderByOrderDateDesc();
 
-    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity)) " +
+    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity), SUM(od.price * od.quantity)) " +
             "FROM Order o " +
             "JOIN o.orderDetails od " +
             "JOIN od.variant cv " +
             "JOIN cv.clothes c " +
             "LEFT JOIN ClothesImage ci ON c.clothesId = ci.clothes.clothesId AND ci.isThumbnail = true " +
             "WHERE o.status = 'COMPLETED' " +
+            "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+            "AND (:endDate IS NULL OR o.orderDate < :endDate) " +
             "GROUP BY c.clothesId, c.name, ci.imageUrl " +
             "ORDER BY SUM(od.quantity) DESC")
-    List<TopProductDTO> findTopSellingProducts(Pageable pageable);
+    List<TopProductDTO> findTopSellingProducts(@Param("startDate") LocalDateTime startDate,
+                                                @Param("endDate") LocalDateTime endDate,
+                                                Pageable pageable);
 
-    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity)) " +
+    @Query("SELECT new MyClothesShop.demo.dto.TopProductDTO(c.clothesId, c.name, ci.imageUrl, SUM(od.quantity), SUM(od.price * od.quantity)) " +
             "FROM Order o " +
             "JOIN o.orderDetails od " +
             "JOIN od.variant cv " +

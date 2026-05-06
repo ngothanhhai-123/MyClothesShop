@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.PathVariable; // Thư viện đ�
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -59,10 +62,22 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/top-selling")
-    public ResponseEntity<?> getTopSellingProducts() {
+    public ResponseEntity<?> getTopSellingProducts(@RequestParam(defaultValue = "all") String time) {
         // Limit lấy top 5
         Pageable topFive = PageRequest.of(0, 5);
-        List<TopProductDTO> topProducts = orderRepository.findTopSellingProducts(topFive);
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+        LocalDate today = LocalDate.now();
+
+        if ("week".equalsIgnoreCase(time)) {
+            startDate = today.with(DayOfWeek.MONDAY).atStartOfDay();
+            endDate = startDate.plusWeeks(1);
+        } else if ("month".equalsIgnoreCase(time)) {
+            startDate = today.withDayOfMonth(1).atStartOfDay();
+            endDate = startDate.plusMonths(1);
+        }
+
+        List<TopProductDTO> topProducts = orderRepository.findTopSellingProducts(startDate, endDate, topFive);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
