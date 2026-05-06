@@ -70,15 +70,55 @@
     <script src="js/common.js"></script>
     <script>
         
+        const token = localStorage.getItem('jwt_token');
+        const isLoggedIn = !!token;
 
-        // --- 2. XỬ LÝ DỮ LIỆU GIỎ HÀNG TỪ LOCALSTORAGE ---
+        function formatImageUrl(dbImage) {
+            if (!dbImage) return 'https://via.placeholder.com/80x100?text=No+Image';
+            if (!dbImage.includes('.')) dbImage += '.jpg';
+            if (dbImage.startsWith('http')) return dbImage;
+            let cleanPath = dbImage.replace('/uploads/', '').replace('uploads/', '');
+            return 'http://localhost:8080/uploads/' + encodeURI(cleanPath);
+        }
+
+        // --- KHỞI CHẠY ---
         document.addEventListener("DOMContentLoaded", renderCart);
 
         function renderCart() {
-            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            if (isLoggedIn) {
+                // ĐÃ ĐĂNG NHẬP → Lấy giỏ hàng từ Database
+                axios.get('http://localhost:8080/api/cart', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(res => {
+                    const cartData = res.data;
+                    renderCartUI(cartData.items || [], cartData.totalCartPrice || 0);
+                }).catch(err => {
+                    // Nếu giỏ hàng trống hoặc chưa tạo
+                    renderCartUI([], 0);
+                });
+            } else {
+                // CHƯA ĐĂNG NHẬP → Dùng localStorage
+                let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+                let subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                let items = cart.map((item, index) => ({
+                    productName: item.name,
+                    color: item.color,
+                    size: item.size,
+                    price: item.price,
+                    quantity: item.qty,
+                    itemTotal: item.price * item.qty,
+                    imageUrl: item.image,
+                    variantId: item.variantId || null,
+                    _localIndex: index
+                }));
+                renderCartUI(items, subtotal);
+            }
+        }
+
+        function renderCartUI(items, totalCartPrice) {
             let container = document.getElementById('cart-content-wrapper');
 
-            if (cart.length === 0) {
+            if (items.length === 0) {
                 container.innerHTML = `
                     <div class="empty-cart-msg">
                         <i class="fa-solid fa-cart-arrow-down"></i>
@@ -86,6 +126,7 @@
                         <a href="index.html" class="btn-continue">Tiếp tục mua sắm</a>
                     </div>
                 `;
+                updateCartCount();
                 return;
             }
 
@@ -104,39 +145,40 @@
                             </thead>
                             <tbody>
             `;
-            
-            let subtotal = 0;
 
-            cart.forEach((item, index) => {
-                let itemTotal = item.price * item.qty;
-                subtotal += itemTotal;
-                
+            items.forEach((item, index) => {
+                let imgSrc = formatImageUrl(item.imageUrl);
                 let priceFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price);
-                let totalFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(itemTotal);
+                let totalFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.itemTotal);
+                let colorDisplay = item.color || '';
+                let sizeDisplay = item.size || '';
+
+                // Tạo data attribute để xác định item khi tăng/giảm/xóa
+                let dataAttr = isLoggedIn ? `data-variant-id="${item.variantId}"` : `data-local-index="${item._localIndex}"`;
 
                 tableHtml += `
-                    <tr>
+                    <tr ${dataAttr}>
                         <td>
                             <div class="cart-item-info">
-                                <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                                <img src="${imgSrc}" alt="${item.productName}" class="cart-item-img">
                                 <div class="cart-item-details">
-                                    <div class="item-name">${item.name}</div>
-                                    <div class="item-meta">Màu sắc: <b>${item.color}</b></div>
-                                    <div class="item-meta">Kích thước: <b>${item.size}</b></div>
+                                    <div class="item-name">${item.productName}</div>
+                                    <div class="item-meta">Màu sắc: <b>${colorDisplay}</b></div>
+                                    <div class="item-meta">Kích thước: <b>${sizeDisplay}</b></div>
                                 </div>
                             </div>
                         </td>
                         <td style="font-weight: 500;">${priceFmt}</td>
                         <td>
                             <div class="qty-control">
-                                <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
-                                <input type="text" class="qty-input" value="${item.qty}" readonly>
-                                <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+                                <button class="qty-btn" onclick="updateQty(${index}, -1, ${item.variantId || 'null'})">-</button>
+                                <input type="text" class="qty-input" value="${item.quantity}" readonly>
+                                <button class="qty-btn" onclick="updateQty(${index}, 1, ${item.variantId || 'null'})">+</button>
                             </div>
                         </td>
                         <td class="item-total-price">${totalFmt}</td>
                         <td>
-                            <button class="btn-remove" onclick="removeItem(${index})" title="Xóa sản phẩm">
+                            <button class="btn-remove" onclick="removeItem(${index}, ${item.variantId || 'null'})" title="Xóa sản phẩm">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </td>
@@ -146,13 +188,13 @@
 
             tableHtml += `</tbody></table></div>`;
 
-            let finalTotal = subtotal;
+            let subtotalFmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalCartPrice);
             let summaryHtml = `
                 <div class="cart-summary">
                     <h3>Tóm tắt đơn hàng</h3>
                     <div class="summary-row">
                         <span>Tạm tính:</span>
-                        <span>${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(subtotal)}</span>
+                        <span>${subtotalFmt}</span>
                     </div>
                     <div class="summary-row">
                         <span>Phí giao hàng:</span>
@@ -160,7 +202,7 @@
                     </div>
                     <div class="summary-total">
                         <span>Tổng cộng:</span>
-                        <span class="total-val">${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(finalTotal)}</span>
+                        <span class="total-val">${subtotalFmt}</span>
                     </div>
                     <a href="checkout.html" class="btn-checkout">Tiến hành đặt hàng</a>
                 </div>
@@ -170,20 +212,46 @@
             updateCartCount();
         }
 
-        // --- 3. HÀM TĂNG GIẢM SỐ LƯỢNG & XÓA ---
-        function updateQty(index, change) {
-            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
-            let newQty = cart[index].qty + change;
-            
-            if (newQty >= 1) {
-                cart[index].qty = newQty;
-                localStorage.setItem('my_cart', JSON.stringify(cart));
-                renderCart();
+        // --- HÀM TĂNG GIẢM SỐ LƯỢNG ---
+        function updateQty(index, change, variantId) {
+            if (isLoggedIn && variantId) {
+                // ĐÃ ĐĂNG NHẬP → Gọi API
+                // Lấy số lượng hiện tại từ DOM
+                const rows = document.querySelectorAll('.cart-table tbody tr');
+                const currentQty = parseInt(rows[index].querySelector('.qty-input').value);
+                const newQty = currentQty + change;
+                if (newQty < 1) return;
+
+                axios.put(`http://localhost:8080/api/cart/update?variantId=${variantId}&quantity=${newQty}`, null, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(() => renderCart())
+                  .catch(err => showNotification("Lỗi: " + (err.response?.data || "Không thể cập nhật."), false));
+            } else {
+                // CHƯA ĐĂNG NHẬP → Sửa localStorage
+                let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+                let newQty = cart[index].qty + change;
+                if (newQty >= 1) {
+                    cart[index].qty = newQty;
+                    localStorage.setItem('my_cart', JSON.stringify(cart));
+                    renderCart();
+                }
             }
         }
 
-        function removeItem(index) {
-            if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) {
+        // --- HÀM XÓA SẢN PHẨM ---
+        function removeItem(index, variantId) {
+            if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) return;
+
+            if (isLoggedIn && variantId) {
+                // ĐÃ ĐĂNG NHẬP → Gọi API xóa
+                axios.delete(`http://localhost:8080/api/cart/remove/${variantId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(() => {
+                    showNotification("Đã xóa sản phẩm khỏi giỏ hàng!");
+                    renderCart();
+                }).catch(err => showNotification("Lỗi: " + (err.response?.data || "Không thể xóa."), false));
+            } else {
+                // CHƯA ĐĂNG NHẬP → Xóa trong localStorage
                 let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
                 cart.splice(index, 1);
                 localStorage.setItem('my_cart', JSON.stringify(cart));
@@ -192,10 +260,19 @@
         }
 
         function updateCartCount() {
-            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
-            let totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-            let cartCountEl = document.querySelector('.cart-count');
-            if(cartCountEl) cartCountEl.innerText = totalItems;
+            if (isLoggedIn) {
+                // Đếm từ DOM (vì dữ liệu đã render xong)
+                const qtyInputs = document.querySelectorAll('.qty-input');
+                let total = 0;
+                qtyInputs.forEach(input => total += parseInt(input.value || 0));
+                let cartCountEl = document.querySelector('.cart-count');
+                if (cartCountEl) cartCountEl.innerText = total;
+            } else {
+                let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+                let totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+                let cartCountEl = document.querySelector('.cart-count');
+                if(cartCountEl) cartCountEl.innerText = totalItems;
+            }
         }
     </script>
 </body>

@@ -43,6 +43,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/orders/checkout").hasRole("CUSTOMER")
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/orders/checkout-cart").hasRole("CUSTOMER")
                         .requestMatchers("/api/orders/my-orders").hasRole("CUSTOMER")
 
                         .anyRequest().authenticated()

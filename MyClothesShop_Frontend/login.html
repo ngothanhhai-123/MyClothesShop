@@ -187,7 +187,10 @@
                     if (fullTokenString.includes('ADMIN')) {
                         window.location.href = "admin-dashboard.html"; 
                     } else {
-                        window.location.href = "index.html"; 
+                        // ĐỒNG BỘ GIỎ HÀNG TỪ LOCALSTORAGE LÊN DATABASE
+                        syncLocalCartToDatabase(token).then(() => {
+                            window.location.href = "index.html";
+                        });
                     }
                 })
                 .catch(function (error) {
@@ -198,6 +201,29 @@
                         errorMsg.innerText = "Sai email hoặc mật khẩu! Vui lòng thử lại.";
                     }
                 });
+        }
+
+        // Hàm đồng bộ giỏ hàng localStorage lên Database
+        async function syncLocalCartToDatabase(token) {
+            const localCart = JSON.parse(localStorage.getItem('my_cart')) || [];
+            if (localCart.length === 0) return; // Không có gì để sync
+
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            for (const item of localCart) {
+                try {
+                    await axios.post(
+                        `http://localhost:8080/api/cart/sync?clothesId=${item.id}&color=${item.color}&size=${item.size}&quantity=${item.qty}`,
+                        null,
+                        { headers }
+                    );
+                } catch (err) {
+                    console.warn("Không thể sync sản phẩm:", item.name, err.response?.data);
+                }
+            }
+
+            // Xóa giỏ hàng localStorage sau khi đã sync lên DB
+            localStorage.removeItem('my_cart');
         }
 
         // 3. Hàm xử lý ĐĂNG KÝ

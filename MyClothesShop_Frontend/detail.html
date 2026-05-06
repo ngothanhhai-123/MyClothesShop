@@ -332,18 +332,31 @@
                 return;
             }
 
-            let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
-            let existingItem = cart.find(item => item.id === id && item.color === selectedColor && item.size === selectedSize);
+            const token = localStorage.getItem('jwt_token');
 
-            if (existingItem) existingItem.qty += qty; 
-            else cart.push({ id, name, price: exactVariant.price, image, color: selectedColor, size: selectedSize, qty });
+            if (token) {
+                // ĐÃ ĐĂNG NHẬP → Gọi API thêm vào giỏ hàng trong Database
+                axios.post('http://localhost:8080/api/cart/add', 
+                    { variantId: exactVariant.variantId, quantity: qty },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                ).then(res => {
+                    if (isBuyNow) window.location.href = 'cart.html';
+                    else showNotification("Đã thêm sản phẩm vào giỏ hàng!");
+                }).catch(err => {
+                    showNotification("Lỗi: " + (err.response?.data || "Không thể thêm vào giỏ."), false);
+                });
+            } else {
+                // CHƯA ĐĂNG NHẬP → Lưu vào localStorage (cho khách duyệt xem)
+                let cart = JSON.parse(localStorage.getItem('my_cart')) || [];
+                let existingItem = cart.find(item => item.id === id && item.color === selectedColor && item.size === selectedSize);
 
-            localStorage.setItem('my_cart', JSON.stringify(cart));
-            
-            if (isBuyNow) window.location.href = 'cart.html';
-            else {
-                if(typeof showNotification === 'function') showNotification("Đã thêm sản phẩm vào giỏ hàng!");
-                else  showNotification("Thành công! Đã thêm vào giỏ hàng.");
+                if (existingItem) existingItem.qty += qty; 
+                else cart.push({ id, name, price: exactVariant.price, image, color: selectedColor, size: selectedSize, qty, variantId: exactVariant.variantId });
+
+                localStorage.setItem('my_cart', JSON.stringify(cart));
+                
+                if (isBuyNow) window.location.href = 'cart.html';
+                else showNotification("Đã thêm sản phẩm vào giỏ hàng!");
             }
         }
 

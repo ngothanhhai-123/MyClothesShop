@@ -15,4 +15,5 @@ public class CartItemDTO {
     private BigDecimal price;     // Giá 1 chiếc
     private Integer quantity;     // Số lượng mua
     private BigDecimal itemTotal; // Thành tiền (Giá x Số lượng)
+    private String imageUrl;     // Ảnh đại diện sản phẩm
 }
