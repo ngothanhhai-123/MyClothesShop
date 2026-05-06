@@ -1,6 +1,7 @@
 package MyClothesShop.demo.controller;
 
 import MyClothesShop.demo.dto.CheckoutRequest;
+import MyClothesShop.demo.dto.CheckoutResponse;
 import MyClothesShop.demo.dto.OrderDetailResponse;
 import MyClothesShop.demo.dto.OrderResponse;
 import MyClothesShop.demo.entity.enums.OrderStatus;
@@ -34,6 +35,25 @@ public class OrderController {
             String message = orderService.checkout(email, request, paymentMethod);
 
             return ResponseEntity.ok(message);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // =====================================================
+    // API CHECKOUT MỚI: Lấy giỏ hàng từ DB, Backend tự tính giá
+    // Frontend KHÔNG gửi danh sách items, chỉ gửi thông tin giao hàng
+    // =====================================================
+    @PostMapping("/checkout-cart")
+    public ResponseEntity<?> checkoutFromCart(
+            @RequestParam(required = false) String shippingAddress,
+            @RequestParam(required = false) String note,
+            @RequestParam PaymentMethod paymentMethod,
+            Principal principal) {
+        try {
+            String email = principal.getName();
+            CheckoutResponse result = orderService.checkoutFromCart(email, shippingAddress, note, paymentMethod);
+            return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

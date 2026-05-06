@@ -6,12 +6,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import MyClothesShop.demo.dto.AddToCartRequest;
-import MyClothesShop.demo.entity.Cart;
-import MyClothesShop.demo.entity.CartDetail;
-import MyClothesShop.demo.entity.ClothesVariant;
-import MyClothesShop.demo.entity.User;
+import MyClothesShop.demo.entity.*;
 import MyClothesShop.demo.repository.CartDetailRepository;
 import MyClothesShop.demo.repository.CartRepository;
+import MyClothesShop.demo.repository.ClothesImageRepository;
 import MyClothesShop.demo.repository.ClothesVariantRepository;
 import MyClothesShop.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +26,7 @@ public class CartService {
     private final CartDetailRepository cartDetailRepository;
     private final UserRepository userRepository;
     private final ClothesVariantRepository variantRepository;
+    private final ClothesImageRepository clothesImageRepository;
 
     @Transactional
     // 1. Thêm tham số 'String email' vào hàm
@@ -120,6 +119,13 @@ public class CartService {
             BigDecimal itemTotal = detail.getVariant().getPrice().multiply(BigDecimal.valueOf(detail.getQuantity()));
             item.setItemTotal(itemTotal);
 
+            // Lấy ảnh sản phẩm
+            Integer clothesId = detail.getVariant().getClothes().getClothesId();
+            List<ClothesImage> images = clothesImageRepository.findByClothes_ClothesId(clothesId);
+            if (images != null && !images.isEmpty()) {
+                item.setImageUrl(images.get(0).getImageUrl());
+            }
+
             // Cộng dồn vào tổng tiền cả giỏ
             totalCartPrice = totalCartPrice.add(itemTotal);
 
@@ -180,5 +186,62 @@ public class CartService {
 
         cartDetailRepository.delete(targetItem);
         return "Đã xóa sản phẩm khỏi giỏ hàng!";
+    }
+
+    // =====================================================
+    // THÊM SẢN PHẨM VÀO GIỎ BẰNG clothesId + color + size
+    // (Dùng cho việc đồng bộ giỏ hàng từ localStorage lên DB khi đăng nhập)
+    // =====================================================
+    @Transactional
+    public String addToCartByClothesInfo(String email, Integer clothesId, String color, String size, Integer quantity) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        // Tìm tất cả variant của sản phẩm này
+        List<ClothesVariant> variants = variantRepository.findByClothes_ClothesId(clothesId);
+
+        // Lọc ra đúng variant có màu và size khớp
+        ClothesVariant variant = variants.stream()
+                .filter(v -> v.getColor().name().equalsIgnoreCase(color) && v.getSize().name().equalsIgnoreCase(size))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phân loại " + color + " - " + size));
+
+        if (variant.getStockQuantity() < quantity) {
+            throw new RuntimeException("Kho không đủ hàng cho " + variant.getClothes().getName() + "! Chỉ còn " + variant.getStockQuantity());
+        }
+
+        // Tìm hoặc tạo giỏ hàng
+        Cart cart = cartRepository.findByUser_UserId(user.getUserId())
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setUser(user);
+                    return cartRepository.save(newCart);
+                });
+
+        // Kiểm tra đã có trong giỏ chưa
+        Optional<CartDetail> existingDetail = cartDetailRepository.findByCart_CartId(cart.getCartId())
+                .stream()
+                .filter(detail -> detail.getVariant().getVariantId().equals(variant.getVariantId()))
+                .findFirst();
+
+        if (existingDetail.isPresent()) {
+            CartDetail detail = existingDetail.get();
+            int newQuantity = detail.getQuantity() + quantity;
+            if (variant.getStockQuantity() < newQuantity) {
+                // Nếu vượt tồn kho, set bằng tồn kho tối đa
+                detail.setQuantity(variant.getStockQuantity());
+            } else {
+                detail.setQuantity(newQuantity);
+            }
+            cartDetailRepository.save(detail);
+        } else {
+            CartDetail newDetail = new CartDetail();
+            newDetail.setCart(cart);
+            newDetail.setVariant(variant);
+            newDetail.setQuantity(quantity);
+            cartDetailRepository.save(newDetail);
+        }
+
+        return "OK";
     }
 }

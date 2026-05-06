@@ -1,5 +1,6 @@
 package MyClothesShop.demo.service;
 
+import MyClothesShop.demo.dto.CheckoutResponse;
 import MyClothesShop.demo.dto.OrderDetailResponse;
 import MyClothesShop.demo.dto.OrderItemDTO;
 import MyClothesShop.demo.dto.OrderResponse;
@@ -120,6 +121,109 @@ public class OrderService {
         }
 
         return "Đặt hàng thành công! Mã đơn hàng của bạn là: #" + savedOrder.getOrderId();
+    }
+
+    // =====================================================
+    // CHECKOUT TỪ GIỎ HÀNG TRONG DATABASE (KHÔNG TIN FRONTEND)
+    // Backend tự lấy giỏ hàng, tự tính giá, tự validate tồn kho
+    // =====================================================
+    @Transactional
+    public CheckoutResponse checkoutFromCart(String email, String shippingAddress, String note, PaymentMethod paymentMethod) {
+
+        // 1. Tìm User bằng email (từ JWT Token)
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        // 2. Lấy giỏ hàng từ Database
+        Cart cart = cartRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new RuntimeException("Giỏ hàng trống hoặc chưa có giỏ hàng!"));
+
+        List<CartDetail> cartDetails = cartDetailRepository.findByCart_CartId(cart.getCartId());
+        if (cartDetails.isEmpty()) {
+            throw new RuntimeException("Giỏ hàng đang trống, không thể đặt hàng!");
+        }
+
+        // 3. Validate địa chỉ giao hàng
+        if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
+            throw new RuntimeException("Vui lòng nhập địa chỉ giao hàng!");
+        }
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        // 4. Tạo đơn hàng (lưu trước để lấy mã Order ID)
+        Order order = new Order();
+        order.setUser(user);
+        order.setShippingAddress(shippingAddress.trim());
+        order.setNote(note);
+        order.setStatus(OrderStatus.PENDING);
+        order.setTotalAmount(BigDecimal.ZERO);
+        Order savedOrder = orderRepository.save(order);
+
+        // 5. Duyệt từng sản phẩm trong giỏ hàng DB, validate và tạo OrderDetail
+        for (CartDetail cartItem : cartDetails) {
+            ClothesVariant variant = cartItem.getVariant();
+
+            // Validate tồn kho (Backend tự kiểm tra, không tin Frontend)
+            if (variant.getStockQuantity() < cartItem.getQuantity()) {
+                throw new RuntimeException("Sản phẩm '" + variant.getClothes().getName()
+                        + "' (Size " + variant.getSize() + ", Màu " + variant.getColor()
+                        + ") chỉ còn " + variant.getStockQuantity() + " sản phẩm trong kho!");
+            }
+
+            // Trừ tồn kho
+            variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
+            variantRepository.save(variant);
+
+            // Tính tiền từ giá trong DB (KHÔNG dùng giá Frontend gửi lên)
+            BigDecimal itemTotal = variant.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+            totalAmount = totalAmount.add(itemTotal);
+
+            // Lưu chi tiết đơn hàng
+            OrderDetail orderDetail = new OrderDetail();
+            orderDetail.setOrder(savedOrder);
+            orderDetail.setVariant(variant);
+            orderDetail.setProductName(variant.getClothes().getName());
+            orderDetail.setColor(variant.getColor());
+            orderDetail.setSize(variant.getSize());
+            orderDetail.setQuantity(cartItem.getQuantity());
+            orderDetail.setPrice(variant.getPrice()); // Giá gốc từ DB
+            orderDetailRepository.save(orderDetail);
+        }
+
+        // 6. Cập nhật tổng tiền chuẩn xác
+        savedOrder.setTotalAmount(totalAmount);
+        orderRepository.save(savedOrder);
+
+        // 7. Lưu thông tin thanh toán
+        Payment payment = new Payment();
+        payment.setOrder(savedOrder);
+        payment.setPaymentMethod(paymentMethod != null ? paymentMethod : PaymentMethod.COD);
+        payment.setAmount(totalAmount);
+        payment.setStatus(PaymentStatus.UNPAID);
+        paymentRepository.save(payment);
+
+        // 8. Xóa giỏ hàng sau khi đặt hàng thành công
+        cartDetailRepository.deleteAll(cartDetails);
+
+        // 9. Trả kết quả DTO chuyên nghiệp
+        CheckoutResponse response = CheckoutResponse.builder()
+                .orderId(savedOrder.getOrderId())
+                .message("Đặt hàng thành công! Mã đơn hàng của bạn là: #" + savedOrder.getOrderId())
+                .build();
+
+        if (paymentMethod == PaymentMethod.QR) {
+            String bankId = "ICB";
+            String accountNo = "0812629922";
+            String accountName = "Ngo Thanh Hai";
+            String description = "Thanh toan don hang " + savedOrder.getOrderId();
+            String qrLink = String.format("https://img.vietqr.io/image/%s-%s-compact2.jpg?amount=%s&addInfo=%s&accountName=%s",
+                    bankId, accountNo, totalAmount.toBigInteger().toString(), description.replace(" ", "%20"), accountName.replace(" ", "%20"));
+            
+            response.setQrLink(qrLink);
+            response.setMessage("Đặt hàng thành công! Mã đơn hàng của bạn là: #" + savedOrder.getOrderId() + ". Vui lòng quét mã QR bên dưới để thanh toán.");
+        }
+
+        return response;
     }
 
     @Transactional

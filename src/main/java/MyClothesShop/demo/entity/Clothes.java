@@ -46,7 +46,7 @@ public class Clothes {
 
     @PrePersist
     protected void onCreate() {
-        // 1. Lưu thời gian tạo
+        // 1. Lưu thời gian tạo 
         this.createdAt = LocalDateTime.now();
 
         // 2. Lưu luôn tên không dấu lúc mới tạo sản phẩm

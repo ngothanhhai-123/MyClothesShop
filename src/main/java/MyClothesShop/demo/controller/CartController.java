@@ -60,4 +60,24 @@ public class CartController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // =====================================================
+    // API ĐỒNG BỘ GIỎ HÀNG TỪ LOCALSTORAGE LÊN DATABASE
+    // Gọi sau khi đăng nhập, nhận clothesId + color + size + quantity
+    // =====================================================
+    @PostMapping("/sync")
+    public ResponseEntity<?> syncCartItem(
+            @RequestParam Integer clothesId,
+            @RequestParam String color,
+            @RequestParam String size,
+            @RequestParam Integer quantity,
+            Principal principal) {
+        try {
+            String email = principal.getName();
+            String result = cartService.addToCartByClothesInfo(email, clothesId, color, size, quantity);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
