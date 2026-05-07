@@ -13,4 +13,8 @@ public class CheckoutResponse {
     private Integer orderId;
     private String message;
     private String qrLink;
+    private String amount;
+    private String bankAccount;
+    private String accountName;
+    private String description;
 }
