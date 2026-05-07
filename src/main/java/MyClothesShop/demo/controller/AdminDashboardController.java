@@ -50,16 +50,7 @@ public class AdminDashboardController {
     public ResponseEntity<List<ChartDTO>> getYearlyChart() {
         return ResponseEntity.ok(dashboardService.getYearlyRevenueChart());
     }
-
-    @GetMapping("/chart-new/{type}")
-    public ResponseEntity<List<ChartDTO>> getNewProductChart(
-            @PathVariable String type,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month) {
-
-        List<ChartDTO> data = dashboardService.getNewProductChartData(type, year, month);
-        return ResponseEntity.ok(data);
-    }
+    
 
     @GetMapping("/top-selling")
     public ResponseEntity<?> getTopSellingProducts(@RequestParam(defaultValue = "all") String time) {
