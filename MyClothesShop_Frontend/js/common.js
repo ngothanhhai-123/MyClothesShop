@@ -10,7 +10,7 @@ function loadComponent(id, file, callback) {
             const element = document.getElementById(id);
             if (element) {
                 element.innerHTML = data;
-                if (callback) callback(); 
+                if (callback) callback();
             }
         })
         .catch(err => console.error(`Lỗi tải ${file}:`, err));
@@ -23,23 +23,23 @@ function fetchCategories() {
             const allCategories = response.data;
             const navMenu = document.getElementById('dynamic-nav-menu');
             if (!navMenu) return; // Nếu trang nào không có menu thì bỏ qua
-            
+
             // --- SỬA Ở ĐÂY: Bơm thêm link HOT và Tất Cả Sản Phẩm vào chuỗi HTML gốc ---
             let htmlContent = `
                 <li><a href="category.html?type=hot" class="nav-link" style="color: #e74c3c; font-weight: 800;">Sản Phẩm HOT</a></li>
                 <li><a href="category.html" class="nav-link">Tất Cả Sản Phẩm</a></li>
             `;
-            
+
             // Lọc danh mục Cha
             const parentCategories = allCategories.filter(cat => !cat.parentId && !cat.parent);
-            
+
             parentCategories.forEach(parent => {
                 // Lọc danh mục Con
-                const childCategories = allCategories.filter(cat => 
-                    (cat.parentId === parent.categoryId) || 
+                const childCategories = allCategories.filter(cat =>
+                    (cat.parentId === parent.categoryId) ||
                     (cat.parent && cat.parent.categoryId === parent.categoryId)
                 );
-                
+
                 if (childCategories.length > 0) {
                     htmlContent += `
                         <li class="my-dropdown">
@@ -55,7 +55,7 @@ function fetchCategories() {
                     htmlContent += `<li><a href="category.html?id=${parent.categoryId}" class="nav-link">${parent.name}</a></li>`;
                 }
             });
-            
+
             // Render toàn bộ ra màn hình
             navMenu.innerHTML = htmlContent;
         })
@@ -63,14 +63,14 @@ function fetchCategories() {
 }
 
 // 3. TỰ ĐỘNG CHẠY KHI MỞ BẤT KỲ TRANG NÀO
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     // Tự động nhúng Header (kèm gọi Menu)
-    if(document.getElementById('header-placeholder')) {
+    if (document.getElementById('header-placeholder')) {
         loadComponent('header-placeholder', 'components/header.html', fetchCategories);
     }
-    
+
     // Tự động nhúng Footer
-    if(document.getElementById('footer-placeholder')) {
+    if (document.getElementById('footer-placeholder')) {
         loadComponent('footer-placeholder', 'components/footer.html');
     }
 });
@@ -102,7 +102,7 @@ function showNotification(message, isSuccess = true) {
     // Tạo 1 thẻ div chứa thông báo
     const toast = document.createElement('div');
     toast.innerText = message;
-    
+
     // Gắn CSS trực tiếp để nó nổi lên ở góc trên bên phải
     const bgColor = isSuccess ? '#000000' : '#e74c3c'; // Đen nếu thành công, Đỏ nếu lỗi
     toast.style.cssText = `
@@ -135,6 +135,6 @@ function showNotification(message, isSuccess = true) {
         toast.style.opacity = "0";
         toast.style.transform = "translateY(-20px)";
         // Xóa hẳn thẻ div khỏi HTML sau khi làm mờ xong
-        setTimeout(() => toast.remove(), 400); 
+        setTimeout(() => toast.remove(), 400);
     }, 3000);
 }
