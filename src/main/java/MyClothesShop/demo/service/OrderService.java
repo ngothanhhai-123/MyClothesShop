@@ -220,6 +220,10 @@ public class OrderService {
                     bankId, accountNo, totalAmount.toBigInteger().toString(), description.replace(" ", "%20"), accountName.replace(" ", "%20"));
             
             response.setQrLink(qrLink);
+            response.setAmount(totalAmount.toBigInteger().toString());
+            response.setBankAccount(bankId + " - " + accountNo);
+            response.setAccountName(accountName.toUpperCase());
+            response.setDescription(description);
             response.setMessage("Đặt hàng thành công! Mã đơn hàng của bạn là: #" + savedOrder.getOrderId() + ". Vui lòng quét mã QR bên dưới để thanh toán.");
         }
 

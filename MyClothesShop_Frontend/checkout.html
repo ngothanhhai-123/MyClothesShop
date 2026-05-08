@@ -428,6 +428,12 @@
                 if (responseData.qrLink) {
                     document.getElementById('modal-qr-container').style.display = 'block';
                     document.getElementById('modal-qr-img').src = responseData.qrLink;
+                    
+                    // Bind text details
+                    document.getElementById('modal-bank-acc').innerText = responseData.bankAccount || "ICB - 0812629922";
+                    document.getElementById('modal-acc-name').innerText = responseData.accountName || "NGO THANH HAI";
+                    document.getElementById('modal-amount').innerText = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(responseData.amount || 0);
+                    document.getElementById('modal-desc').innerText = responseData.description || "Thanh toan don hang";
                 } else {
                     document.getElementById('modal-qr-container').style.display = 'none';
                 }
@@ -450,10 +456,18 @@
             <div class="success-icon">✓</div>
             <h2>Đặt hàng thành công!</h2>
             <p id="modal-message" style="font-size: 1.1rem; color: #4b5563; line-height: 1.6;"></p>
-            <div id="modal-qr-container" style="display: none; margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 15px;">
+            <div id="modal-qr-container" style="display: none; margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 15px; text-align: center;">
                 <p style="margin-bottom: 15px; font-weight: 600; color: #1e293b;">Vui lòng quét mã QR để thanh toán:</p>
-                <img id="modal-qr-img" src="" alt="QR Payment" style="width: 250px; border: 5px solid #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <p style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">(Hệ thống sẽ tự động cập nhật sau khi nhận được tiền)</p>
+                <img id="modal-qr-img" src="" alt="QR Payment" style="display: block; margin: 0 auto; width: 250px; border: 5px solid #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                
+                <div id="modal-qr-details" style="margin-top: 15px; text-align: left; background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; font-size: 0.95rem; color: #334155; line-height: 1.6;">
+                    <div style="margin-bottom: 5px;"><strong>Ngân hàng:</strong> <span id="modal-bank-acc"></span></div>
+                    <div style="margin-bottom: 5px;"><strong>Chủ tài khoản:</strong> <span id="modal-acc-name"></span></div>
+                    <div style="margin-bottom: 5px;"><strong>Số tiền:</strong> <strong style="color: #e11d48;" id="modal-amount"></strong></div>
+                    <div><strong>Nội dung CK:</strong> <strong id="modal-desc"></strong></div>
+                </div>
+
+                <p style="margin-top: 15px; font-size: 0.9rem; color: #64748b;">(Hệ thống sẽ tự động cập nhật trạng thái đơn hàng sau khi nhận được tiền)</p>
             </div>
             <div class="modal-actions">
                 <button class="btn-primary" onclick="goToProfile()">Xem lịch sử đơn hàng</button>
